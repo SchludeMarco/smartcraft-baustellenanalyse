@@ -1,19 +1,58 @@
 # Sm@rtCraft – Baustellenanalyse (V1.71)
 
-KI-gestützte Handwerker-App: Foto oder Problembeschreibung einer Baustellensituation
-hochladen, Gewerk auswählen — Gemini analysiert das Problem und liefert eine
-Schritt-für-Schritt-Lösung, dazu auf Wunsch Materialliste, Sicherheits-Check und
-einen jargonfreien Kundenbericht. Ergebnisse lassen sich als PDF exportieren und
-werden (anonym, pro Gerät/Sitzung) in Firestore als Verlauf gespeichert.
+**Ein Werkzeug, das ich mir selbst gewünscht hätte.**
+
+Bevor ich in die KI-Anwendungsentwicklung gewechselt bin, habe ich als Zimmermann
+gearbeitet. Auf der Baustelle steht man ständig vor Problemen, bei denen die Lösung
+nicht offensichtlich ist: ein Wasserschaden am Dachbalken, ein Riss im Mauerwerk, eine
+Elektroinstallation, die nicht so recht ins vorhandene Konzept passt. Man ruft einen
+Kollegen an, blättert im Fachbuch, oder fährt zum Baumarkt und hofft, dass der Verkäufer
+weiterhelfen kann. Sm@rtCraft ist der Versuch, genau diese Lücke zu schließen: ein
+KI-gestützter Kollege in der Hosentasche, der ein Foto oder eine Beschreibung des
+Problems sieht und in Sekunden eine fachlich fundierte Einschätzung liefert — für
+Handwerker jedes Gewerks, direkt auf der Baustelle.
 
 Entstanden während der Schulung zum KI-Anwendungsspezialisten.
+
+## Was die App kann
+
+**1. Gewerk auswählen** — Klempner, Elektriker, Maler, Gärtner, Zimmerer, Mechaniker,
+Maurer, Dachdecker, Allround-Handwerker oder Sonstiges. Die Auswahl fließt direkt in
+die KI-Diagnose ein und wird pro Nutzer gemerkt (Firestore-Profil).
+
+**2. Problem dokumentieren** — Foto der Problemstelle hochladen, eine Textbeschreibung
+eintippen, oder beides. Mindestens eines der beiden reicht, damit die Analyse startet.
+
+**3. KI-Diagnose** — Gemini analysiert Bild und/oder Beschreibung im Kontext des
+gewählten Gewerks und liefert eine präzise, schrittweise Lösung, formuliert für einen
+erfahrenen Handwerker (kein Laien-Geschwurbel, direkt und praxisnah).
+
+**4. Vier KI-Zusatzwerkzeuge**, jeweils auf Basis der Diagnose per Knopfdruck abrufbar:
+- **Materialliste** — strukturierte Liste aus Material und Werkzeug inkl. Mengenangabe
+- **Sicherheits-Check** — Risikoeinschätzung und notwendige persönliche
+  Schutzausrüstung (PSA)
+- **Kundenbericht** — dieselbe Lösung, jargonfrei für Auftraggeber oder Endkunden
+  formuliert, inklusive administrativer nächster Schritte (Genehmigungen, Abnahmen)
+- Video-Anleitungs-Suche ist im Code vorbereitet, aber aktuell deaktiviert (siehe
+  Ausblick)
+
+**5. PDF-Export** — der komplette Bericht (Diagnose, Materialliste, Sicherheits-Check,
+Kundenbericht, Foto) lässt sich als druckfertiges PDF exportieren — direkt weitergebbar
+an Kunden oder fürs eigene Archiv.
+
+**6. Verlauf** — jede Analyse wird (anonym, pro Sitzung) in Firestore gespeichert; die
+letzten 20 Analysen lassen sich später erneut aufrufen, ohne Foto oder Beschreibung neu
+eingeben zu müssen.
+
+**7. Haftungsausschluss fest im UI** — ein sichtbarer EU-AI-Act-Hinweis macht klar:
+die KI-Diagnose ist ein unterstützender Vorschlag, kein Ersatz für die Prüfung durch
+einen zertifizierten Fachmann bei sicherheitsrelevanten Arbeiten.
 
 ## Tech-Stack
 
 React 18 + Vite, Tailwind CSS (CDN), Firebase (Anonymous Auth + Firestore),
-Google Gemini API (`gemini-2.5-flash-preview-09-2025`) über eine Vercel
-Serverless Function als Proxy — der API-Key bleibt dadurch server-seitig und
-wird nie im Browser sichtbar.
+Google Gemini API (`gemini-flash-latest`) über eine Vercel Serverless Function als
+Proxy — der API-Key bleibt dadurch server-seitig und wird nie im Browser sichtbar.
 
 ## Lokales Setup
 
@@ -50,8 +89,15 @@ Environment Variables in den Vercel-Projekteinstellungen:
 | `VITE_FIREBASE_APP_ID` | client | „ |
 | `VITE_FIREBASE_MEASUREMENT_ID` | client | „ |
 
-## Hinweise
+## Bekannte Einschränkungen & Ausblick
 
-- TTS (Sprachausgabe) ist im Original bewusst deaktiviert (fehlende API-Berechtigung) und bleibt es hier.
-- Die Video-Anleitungs-Suche (Google-Search-Grounding) ist im Code auskommentiert/deaktiviert.
-- EU-AI-Act-Haftungsausschluss ist fest im UI verankert: KI-Diagnose ersetzt keine fachliche Prüfung.
+- **TTS (Sprachausgabe)** ist im Code vorbereitet (inkl. eigener WAV-Encoder), aber
+  deaktiviert — im Original fehlte die API-Berechtigung dafür. Naheliegende
+  Erweiterung: Diagnose auf der Baustelle vorlesen lassen, wenn beide Hände beschäftigt
+  sind.
+- **Video-Anleitungs-Suche** (YouTube-Tutorials passend zur Lösung, per
+  Google-Search-Grounding) ist im Code auskommentiert, aber vollständig vorbereitet.
+- **Anonyme Sitzungen statt Konto:** aktuell meldet sich jeder Nutzer anonym an
+  (Firebase Anonymous Auth) — der Verlauf ist an das jeweilige Gerät gebunden. Für eine
+  spätere Android-App wäre echtes Google-Sign-In der nächste Schritt, um ein
+  dauerhaftes, geräteübergreifendes Konto zu ermöglichen.
