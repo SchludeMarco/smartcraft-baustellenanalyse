@@ -1305,14 +1305,16 @@ onClick={saveTradePreference} // Speichert direkt in Firestore
 <div className="bg-white p-4 border border-gray-200 rounded-xl shadow-lg">
 {/* Mini-Button-Leiste für Foto-Auswahl im Tab-Stil - Jetzt klarer als Dateiauswahl */}
 <div className="flex space-x-4 text-sm font-semibold text-gray-700 mb-4 border-b pb-2 -mt-2">
-{/* Foto auswählen (Kamera-Icon beibehalten, aber Funktion ist Dateiauswahl) */}
+{/* Foto direkt mit der Kamera aufnehmen: "capture" öffnet auf dem Handy die
+    Kamera-App statt einer Dateiauswahl, damit die Analyse live auf der
+    Baustelle passiert. Auf dem Desktop ohne Kamera fällt der Browser
+    automatisch auf eine normale Dateiauswahl zurück. */}
 <label htmlFor="camera-input" className="flex items-center space-x-1 cursor-pointer hover:text-red-600 transition">
 <Camera className="w-5 h-5 text-red-600" />
-{/* Name geändert auf "Foto wählen" um die Live-Kamera-Verwirrung zu vermeiden */}
-<span>Foto wählen</span>
-<input id="camera-input" type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+<span>Foto aufnehmen</span>
+<input id="camera-input" type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
 </label>
-{/* Galerie */}
+{/* Galerie: bewusst ohne "capture", damit auch ein bereits vorhandenes Foto ausgewählt werden kann */}
 <label htmlFor="gallery-input" className="flex items-center space-x-1 cursor-pointer hover:text-red-600 transition">
 <Image className="w-5 h-5 text-red-600" />
 <span>Galerie</span>
