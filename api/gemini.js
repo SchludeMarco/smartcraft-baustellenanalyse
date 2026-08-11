@@ -9,6 +9,21 @@ export default async function handler(req, res) {
     return;
   }
 
+  // Nur Requests akzeptieren, die tatsächlich vom eigenen Frontend kommen
+  // (verhindert, dass fremde Seiten diesen Endpoint als kostenlosen
+  // Gemini-Proxy missbrauchen und das API-Kontingent/Kosten verursachen).
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  let originHost = null;
+  try {
+    originHost = req.headers.origin ? new URL(req.headers.origin).host : null;
+  } catch {
+    originHost = null;
+  }
+  if (!originHost || originHost !== host) {
+    res.status(403).json({ error: 'Forbidden' });
+    return;
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     res.status(500).json({ error: 'Server misconfigured: GEMINI_API_KEY missing' });

@@ -319,14 +319,22 @@ const [ttsAudio, setTtsAudio] = useState(null);
 const [isTtsPlaying, setIsTtsPlaying] = useState(false);
 // --- EFFECT: FIREBASE INITIALISIERUNG UND ANONYME ANMELDUNG ---
 useEffect(() => {
-if (Object.keys(firebaseConfig).length === 0) {
-console.error("Firebase Config nicht gefunden. Firestore-Funktionalität deaktiviert.");
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+console.error("Firebase Config unvollständig (VITE_FIREBASE_* Env-Variablen fehlen). Firestore-Funktionalität deaktiviert.");
 setIsAuthReady(true);
 return;
 }
+let authInstance;
+let dbInstance;
+try {
 const app = initializeApp(firebaseConfig);
-const authInstance = getAuth(app);
-const dbInstance = getFirestore(app);
+authInstance = getAuth(app);
+dbInstance = getFirestore(app);
+} catch (e) {
+console.error("Fehler bei der Firebase-Initialisierung:", e);
+setIsAuthReady(true);
+return;
+}
 setAuth(authInstance);
 setDb(dbInstance);
 const initializeAuth = async () => {
