@@ -382,6 +382,11 @@ setIsTtsPlaying(false);
 const fileInput = document.getElementById('camera-input') || document.getElementById('gallery-input') || document.getElementById('cloud-input');
 if (fileInput) fileInput.value = '';
 }, [ttsAudio]);
+// --- FUNKTION: NUR FEHLERZUSTAND ZURÜCKSETZEN (Bild bleibt erhalten) ---
+const clearError = useCallback(() => {
+setError(null);
+setIsAnalyzing(false);
+}, []);
 // --- FUNKTION: VERLAUFSEINTRAG LADEN ---
 const handleSelectAnalysis = useCallback((item) => {
 handleReset();
@@ -941,11 +946,21 @@ return (
 }
 if (error) {
 return (
-<div className="p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-lg shadow-md flex items-start space-x-3">
+<div className="relative p-4 pr-10 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-lg shadow-md flex items-start space-x-3">
+<button
+type="button"
+onClick={clearError}
+aria-label="Fehler zurücksetzen"
+title="Fehler zurücksetzen (Bild bleibt erhalten)"
+className="absolute top-2 right-2 p-1 rounded-full text-red-500 hover:bg-red-200 hover:text-red-800 transition-colors"
+>
+<X className="w-4 h-4" />
+</button>
 <AlertTriangle className="w-5 h-5 mt-1 flex-shrink-0 text-red-600" />
 <div>
 <p className="font-bold">Analysefehler</p>
 <p className="text-sm">{error}</p>
+<p className="text-xs text-red-500 mt-1">Ihr Bild bleibt erhalten. Tippen Sie oben rechts, um es erneut zu versuchen.</p>
 </div>
 </div>
 );
@@ -1145,7 +1160,7 @@ Um die Analyse zu starten, benötigen Sie **eines** der folgenden Elemente:
 <p className="text-xs mt-4 text-gray-500">Wählen Sie zuerst Ihr Gewerk (Abschnitt 1) für eine präzisere Diagnose.</p>
 </div>
 );
-}, [isAnalyzing, error, solutionText, handleExportPdf, materialList, safetyTips, videoLinks, clientReport, isGeneratingMaterials, isGeneratingSafety, isGeneratingVideos, isGeneratingReport, callGeminiMaterialsAPI, callGeminiSafetyAPI, callGeminiVideoSearch, callGeminiClientReportAPI, selectedImageBase64, problemDescription]);
+}, [isAnalyzing, error, clearError, solutionText, handleExportPdf, materialList, safetyTips, videoLinks, clientReport, isGeneratingMaterials, isGeneratingSafety, isGeneratingVideos, isGeneratingReport, callGeminiMaterialsAPI, callGeminiSafetyAPI, callGeminiVideoSearch, callGeminiClientReportAPI, selectedImageBase64, problemDescription]);
 // Profil-Modal-Komponente (angepasst an Rot/Blau)
 const UserProfileModal = () => {
 const [showProfile, setShowProfile] = useState(false);
@@ -1260,8 +1275,8 @@ onSelect={handleSelectAnalysis}
 <div className="flex items-center space-x-3">
 {/* EINGEBETTETES, STABILES LOGO (Lucide-Icons) */}
 <SmarterCraftLogo />
-{/* VERSION V1.71 */}
-<h1 className="text-2xl font-extrabold text-white tracking-tight">Sm@rtCraft! <span className='text-sm font-light italic'>(V1.71)</span></h1>
+{/* Versionsnummer stammt aus package.json (siehe vite.config.js define: __APP_VERSION__) */}
+<h1 className="text-2xl font-extrabold text-white tracking-tight">Sm@rtCraft! <span className='text-sm font-light italic'>(V{__APP_VERSION__})</span></h1>
 </div>
 {/* Profil-Button: Öffnet das Profil-Modal */}
 <UserProfileModal />

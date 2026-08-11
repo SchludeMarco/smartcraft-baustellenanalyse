@@ -1,4 +1,4 @@
-# Sm@rtCraft – Baustellenanalyse (V1.71)
+# Sm@rtCraft – Baustellenanalyse (V1.8.0)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -11,6 +11,11 @@ weiterhelfen kann. Sm@rtCraft ist der Versuch, genau diese Lücke zu schließen:
 KI-gestützter Kollege in der Hosentasche, der ein Foto oder eine Beschreibung des
 Problems sieht und in Sekunden eine fachlich fundierte Einschätzung liefert — für
 Handwerker jedes Gewerks, direkt auf der Baustelle.
+
+Konzipiert ist Sm@rtCraft in erster Linie fürs Smartphone: Foto direkt mit der
+Gerätekamera aufnehmen und noch vor Ort auswerten lassen, ohne Umweg über einen PC.
+Da die App als reine Web-App im Browser läuft, funktioniert sie genauso gut am
+Desktop — etwa im Büro zur Nachbereitung oder für den Kundenbericht.
 
 Entstanden während der Schulung zum KI-Anwendungsspezialisten.
 
