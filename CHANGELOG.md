@@ -8,6 +8,20 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.9.3] – 2026-08-11
+
+### Geändert
+- **README stark erweitert.** Der bisherige Text beschrieb primär den
+  Berufseinsatz auf der Baustelle. Ergänzt: ein eigener Abschnitt "Für wen ist
+  Sm@rtCraft?", der die bereits heute vorhandene Nutzbarkeit für Privatpersonen
+  zuhause (z.B. Riss im Putz, tropfender Wasserhahn, kranke Zimmerpflanze) neben
+  dem Profi-Einsatz gleichwertig darstellt, sowie ein knapper
+  Ablauf-in-der-Praxis-Abschnitt. Grund: die App unterscheidet technisch schon
+  heute nicht zwischen Profi- und Privatnutzung — das README hat das bisher
+  nicht sichtbar gemacht. Der Ausblick-Abschnitt nennt jetzt auch die geplanten
+  Gewerke-Sondereditionen und die separate "Sm@rtCraft Zuhause"-Variante als
+  nächste Ausbaustufe.
+
 ## [1.9.2] – 2026-08-11
 
 ### Geändert
