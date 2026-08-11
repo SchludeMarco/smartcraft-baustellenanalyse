@@ -1,12 +1,26 @@
 # Changelog
 
-Alle nennenswerten Änderungen an SmartCraft Baustellenanalyse, chronologisch
+Alle nennenswerten Änderungen an Sm@rtCraft – Der Kollege in der Hosentasche, chronologisch
 nach Version. Die Versionsnummer stammt einzig aus `package.json` (siehe
 `CLAUDE.md`) und wird als `V{version}` im App-Header angezeigt.
 
 Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
+
+## [1.9.2] – 2026-08-11
+
+### Geändert
+- **Rebranding: neue Tagline "Der Kollege in der Hosentasche".** Ersetzt den
+  bisherigen Untertitel "Baustellenanalyse", der zu stark auf klassische
+  Baustellen-Einsätze eingegrenzt war. Grund: geplante Gewerke-Sondereditionen
+  und eine Privatanwender-Variante sollen unter derselben Kernmarke laufen —
+  "Baustellenanalyse" hätte das nicht mehr abgedeckt. Betroffen: `index.html`
+  (Title), `src/App.jsx` (Header-Untertitel), `README.md`- und
+  `CHANGELOG.md`-Titel. Der interne Firestore-`appId` (`smartcraft-
+  baustellenanalyse` in `src/App.jsx`) und der npm-Paketname in `package.json`
+  bleiben bewusst unverändert, da eine Änderung dort bestehende Nutzerdaten-
+  Pfade in Firestore bricht bzw. keinen sichtbaren Nutzen hätte.
 
 ## [1.9.1] – 2026-08-11
 

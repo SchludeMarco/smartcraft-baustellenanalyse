@@ -1132,7 +1132,7 @@ onSelect={handleSelectAnalysis}
 {/* Profil-Button: Öffnet das Profil-Modal */}
 <UserProfileModal />
 </div>
-<p className="text-sm text-white/90 mt-1 relative z-10">Handwerker App - Ihre Lösung auf der Baustelle.</p>
+<p className="text-sm text-white/90 mt-1 relative z-10">Der Kollege in der Hosentasche.</p>
 </header>
 {/* Haupt-Content-Bereich */}
 <main className="p-4 space-y-6 w-full bg-white/95 backdrop-blur-md shadow-2xl overflow-y-auto">
