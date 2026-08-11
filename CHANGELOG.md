@@ -8,6 +8,31 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.12.0] – 2026-08-11
+
+### Hinzugefügt
+- **Rate-Limiting + Firebase App Check für `/api/gemini`.** Der bestehende
+  Origin-Check in `api/gemini.js` verhindert nur Missbrauch durch fremde
+  Webseiten aus dem Browser — ein Skript, das den `Origin`-Header selbst
+  setzt, kommt trivial durch. Da jeder Call einen bezahlten Gemini-API-Call
+  auslöst, war das eigentliche Risiko nicht ein Server-Crash, sondern
+  Kostenexplosion durch automatisierten Missbrauch. Jetzt zusätzlich:
+  - **App Check** (`firebase/app-check` im Client, `firebase-admin` +
+    `getAppCheck().verifyToken()` server-seitig) verifiziert, dass Requests
+    tatsächlich von der eigenen Web-App kommen (reCAPTCHA v3), nicht von
+    einem Skript.
+  - **Rate-Limiting** über einen Firestore-Zähler pro IP
+    (`_rateLimits/{ip}`, nur per Admin-SDK erreichbar): 12 Requests/Minute
+    (deckt Hauptanalyse + die 4 Zusatz-Tools locker ab) und 200/Tag als
+    Bremse gegen Slow-Drip-Missbrauch.
+  - **Fail-open:** Ohne die neue Server-Variable
+    `FIREBASE_SERVICE_ACCOUNT_KEY` verhält sich der Endpoint unverändert
+    (kein Absturz direkt nach diesem Deploy). Scharf geschaltet wird erst,
+    sobald `FIREBASE_SERVICE_ACCOUNT_KEY` (Service-Account-JSON) und
+    `VITE_RECAPTCHA_SITE_KEY` (reCAPTCHA-v3-Key aus der App-Check-
+    Registrierung) in Firebase Console + Vercel manuell hinterlegt sind —
+    siehe `.env.example` für Details zu beiden Variablen.
+
 ## [1.11.0] – 2026-08-11
 
 ### Hinzugefügt

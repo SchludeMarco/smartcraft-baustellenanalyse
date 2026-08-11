@@ -10,6 +10,9 @@ import {
 getAuth, signInAnonymously, onAuthStateChanged, signOut
 } from 'firebase/auth';
 import {
+initializeAppCheck, ReCaptchaV3Provider, getToken as getAppCheckToken
+} from 'firebase/app-check';
+import {
 getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs,
 orderBy, limit, serverTimestamp
 } from 'firebase/firestore';
@@ -21,6 +24,9 @@ const appId = 'smartcraft-baustellenanalyse';
 // Gemini-Aufrufe laufen über eine eigene Serverless-Function (api/gemini.js),
 // damit der API-Key nie im Browser sichtbar ist.
 const apiUrl = '/api/gemini';
+// Modul-Variable statt React-State, weil fetchWithRetry außerhalb der
+// Komponente liegt und synchron auf die App-Check-Instanz zugreifen muss.
+let appCheckInstance = null;
 // NEUE SYSTEM INSTRUCTION: Betont die Problembeschreibung stärker
 const SYSTEM_INSTRUCTION = "Du bist ein erfahrener Bauingenieur und Zimmermann, spezialisiert auf die Fehlerbehebung und Lösungsfindung bei Bauproblemen. Analysiere das bereitgestellte Bild basierend auf dem GLEICHZEITIG GELIEFERTEN GEWERK und der Problembeschreibung. Ist eine Problembeschreibung vorhanden, MUSS sich die Analyse VORRANGIG auf diese Beschreibung konzentrieren. Gib eine präzise Diagnose sowie eine klare, schrittweise Lösung für einen erfahrenen Handwerker. Antworte immer auf Deutsch. Halte die Sprache professionell, aber direkt und praxisnah.";
 const SYSTEM_INSTRUCTION_MATERIAL = "Du bist ein Einkaufsmanager für Handwerksbetriebe. Analysiere den folgenden Lösungsvorschlag und erstelle eine JSON-Liste der benötigten Materialien und Werkzeuge. Gib nur das JSON-Array aus.";
@@ -68,9 +74,18 @@ reader.onerror = (error) => reject(error);
 * Funktion mit Exponential Backoff für API-Anrufe, um Throttling zu behandeln
 */
 const fetchWithRetry = async (url, options, maxRetries = 3) => {
+let requestOptions = options;
+if (url === apiUrl && appCheckInstance) {
+try {
+const { token } = await getAppCheckToken(appCheckInstance);
+requestOptions = { ...options, headers: { ...options.headers, 'X-Firebase-AppCheck': token } };
+} catch (e) {
+console.error('App-Check-Token konnte nicht geholt werden:', e);
+}
+}
 for (let i = 0; i < maxRetries; i++) {
 try {
-const response = await fetch(url, options);
+const response = await fetch(url, requestOptions);
 if (!response.ok) {
 // Bei 429 (Too Many Requests) oder 5xx (Serverfehler) versuchen wir es erneut
 if (response.status === 429 || response.status >= 500) {
@@ -254,6 +269,28 @@ try {
 const app = initializeApp(firebaseConfig);
 authInstance = getAuth(app);
 dbInstance = getFirestore(app);
+// App Check schützt /api/gemini gegen gescripteten Missbrauch (siehe
+// api/gemini.js). Ohne Site-Key bleibt es clientseitig einfach aus.
+const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+if (recaptchaSiteKey) {
+if (import.meta.env.DEV) {
+// Standard-Pattern für lokale Entwicklung ohne reCAPTCHA-Domain-Freigabe:
+// Debug-Token erscheint in der Konsole und muss einmalig in der Firebase
+// Console unter App Check > Debug-Tokens hinterlegt werden.
+self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+}
+try {
+appCheckInstance = initializeAppCheck(app, {
+provider: new ReCaptchaV3Provider(recaptchaSiteKey),
+isTokenAutoRefreshEnabled: true,
+});
+} catch (e) {
+console.error("App-Check-Initialisierung fehlgeschlagen:", e);
+queueErrorReport('app-check-init', e);
+}
+} else {
+console.warn("VITE_RECAPTCHA_SITE_KEY fehlt — App Check ist deaktiviert.");
+}
 } catch (e) {
 console.error("Fehler bei der Firebase-Initialisierung:", e);
 queueErrorReport('firebase-init', e);
