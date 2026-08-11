@@ -69,8 +69,8 @@ genug, dass auch Laien ihr zuhause folgen können.
   Arbeit noch selbst zu machen ist oder besser einem Fachmann überlassen wird
 - **Kundenbericht** — dieselbe Lösung, jargonfrei für Auftraggeber oder Endkunden
   formuliert, inklusive administrativer nächster Schritte (Genehmigungen, Abnahmen)
-- Video-Anleitungs-Suche ist im Code vorbereitet, aber aktuell deaktiviert (siehe
-  Ausblick)
+- **Video-Anleitungs-Suche** — passende YouTube-Tutorials zur Lösung, per
+  Google-Search-Grounding gefunden
 
 **5. PDF-Export** — der komplette Bericht (Diagnose, Materialliste, Sicherheits-Check,
 Kundenbericht, Foto) lässt sich als druckfertiges PDF exportieren — direkt weitergebbar
@@ -142,8 +142,6 @@ Environment Variables in den Vercel-Projekteinstellungen:
   deaktiviert — im Original fehlte die API-Berechtigung dafür. Naheliegende
   Erweiterung: Diagnose auf der Baustelle vorlesen lassen, wenn beide Hände beschäftigt
   sind.
-- **Video-Anleitungs-Suche** (YouTube-Tutorials passend zur Lösung, per
-  Google-Search-Grounding) ist im Code auskommentiert, aber vollständig vorbereitet.
 - **Anonyme Sitzungen statt Konto:** aktuell meldet sich jeder Nutzer anonym an
   (Firebase Anonymous Auth) — der Verlauf ist an das jeweilige Gerät gebunden. Für eine
   spätere Android-App wäre echtes Google-Sign-In der nächste Schritt, um ein

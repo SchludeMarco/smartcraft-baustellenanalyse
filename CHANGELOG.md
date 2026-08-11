@@ -8,6 +8,23 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.10.0] – 2026-08-11
+
+### Hinzugefügt
+- **Video-Anleitungs-Suche reaktiviert.** Der Button war seit Commit `cc04243`
+  fest deaktiviert (`disabled={true}`), nachdem die zuvor komplett
+  auskommentierte Implementierung als "toter Code" entfernt worden war und nur
+  noch ein leerer Funktions-Stub übrig blieb. `callGeminiVideoSearch` ruft jetzt
+  wieder den Gemini-Proxy mit Google-Search-Grounding
+  (`tools: [{ google_search: {} }]`) auf, um 3-5 passende YouTube-Tutorials zur
+  aktuellen Lösung zu finden. Ursache/Anpassung gegenüber der alten Fassung:
+  `responseSchema`/`responseMimeType` (strukturierter JSON-Modus) lassen sich in
+  der Gemini API nicht mit dem `tools`-Grounding kombinieren — das JSON-Array
+  wird daher per Prompt-Anweisung erzwungen und robust per Regex aus der
+  Textantwort extrahiert (Fallback-Logik war im alten Code bereits vorhanden).
+  README-Abschnitte, die den Feature-Status noch als "vorbereitet, aber
+  deaktiviert" beschrieben, wurden entsprechend aktualisiert.
+
 ## [1.9.3] – 2026-08-11
 
 ### Geändert

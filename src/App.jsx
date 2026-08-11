@@ -25,6 +25,7 @@ const SYSTEM_INSTRUCTION = "Du bist ein erfahrener Bauingenieur und Zimmermann, 
 const SYSTEM_INSTRUCTION_MATERIAL = "Du bist ein Einkaufsmanager für Handwerksbetriebe. Analysiere den folgenden Lösungsvorschlag und erstelle eine JSON-Liste der benötigten Materialien und Werkzeuge. Gib nur das JSON-Array aus.";
 const SYSTEM_INSTRUCTION_SAFETY = "Du bist ein Arbeitsschutz-Experte (Sicherheitstechniker). Analysiere den folgenden Lösungsvorschlag und identifiziere alle potenziellen Risiken. Erstelle eine kurze Liste von Sicherheitstipps und notwendiger persönlicher Schutzausrüstung (PSA). Antworte im Markdown-Format.";
 const SYSTEM_INSTRUCTION_CLIENT_REPORT = "Du bist ein Projektmanager mit ausgezeichneten Kommunikationsfähigkeiten. Nimm die technische Lösung und formuliere eine professionelle, jargonfreie Zusammenfassung für den Endkunden oder Projektleiter. Füge am Ende eine Liste der administrativen nächsten Schritte (z.B. Genehmigungen, Abnahmen) hinzu, die erforderlich sind. Antworte im Markdown-Format.";
+const SYSTEM_INSTRUCTION_VIDEO_FINAL = "Du bist ein YouTube-Experte für Handwerks-Tutorials. Basierend auf dem folgenden Lösungsvorschlag, suche und wähle die 3-5 relevantesten und aktuellsten YouTube-Video-Links aus, die eine visuelle Anleitung zur Reparatur bieten. Ignoriere alle Nicht-YouTube-Links. Antworte AUSSCHLIESSLICH mit einem JSON-Array im Format [{\"title\": \"...\", \"uri\": \"https://www.youtube.com/watch?v=...\"}], ohne zusätzlichen Text davor oder danach.";
 // JSON Schema für die Materialliste
 const MATERIAL_SCHEMA = {
 type: "ARRAY",
@@ -639,8 +640,73 @@ setError("Fehler beim Generieren des Kundenberichts: " + e.message);
 setIsGeneratingReport(false);
 }
 }, [solutionText, db, userId]);
-// --- FUNKTION: Video-Suchanfragen generieren (Feature noch nicht implementiert, Button bleibt deaktiviert) ---
-const callGeminiVideoSearch = useCallback(() => {}, []);
+// --- FUNKTION: Video-Anleitungen suchen (Google-Search-Grounding) ---
+// Hinweis: responseSchema/responseMimeType lassen sich bei der Gemini API nicht mit
+// dem "tools"-Grounding kombinieren, daher wird das JSON-Array per Prompt erzwungen
+// und robust per Regex aus der Textantwort extrahiert.
+const callGeminiVideoSearch = useCallback(async () => {
+  if (!solutionText) return;
+  setIsGeneratingVideos(true);
+  setVideoLinks(null);
+  const userQuery = `Finde die besten 3 bis 5 YouTube-Video-Anleitungen für diese Lösung im Gewerk ${selectedTrade}: ${solutionText}`;
+  const payload = {
+    contents: [{ parts: [{ text: userQuery }] }],
+    systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION_VIDEO_FINAL }] },
+    tools: [{ google_search: {} }],
+  };
+  try {
+    const response = await fetchWithRetry(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const responseText = await response.text();
+    if (!response.ok || !responseText) {
+      const errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
+      console.error("API Response Fehler:", errorMsg);
+      throw new Error("Fehler bei der Video-Anfrage oder leere Antwort.");
+    }
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("JSON-Parse-Fehler:", parseError, "Antworttext:", responseText);
+      throw new Error("Ungültige Antwortstruktur von der KI.");
+    }
+    const responseTextContent = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (responseTextContent && responseTextContent.trim().length > 0) {
+      const jsonMatch = responseTextContent.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      if (!jsonMatch || !jsonMatch[0]) {
+        console.error("JSON Regex Match Fehler:", responseTextContent);
+        setError("Die KI-Antwort enthielt kein gültiges JSON-Array. Bitte erneut versuchen.");
+        return;
+      }
+      try {
+        const parsedJson = JSON.parse(jsonMatch[0]);
+        const validLinks = parsedJson.filter(link =>
+          link.uri && link.uri.includes('youtube.com/watch') && link.title
+        );
+        if (validLinks.length > 0) {
+          setVideoLinks(validLinks);
+        } else {
+          setError("Die KI hat keine passenden YouTube-Video-Links gefunden.");
+        }
+      } catch (parseError) {
+        console.error("JSON Parsing Fehler (Video Search):", parseError);
+        setError("Fehler beim Verarbeiten der KI-Antwort (ungültiges JSON-Format).");
+      }
+    } else {
+      setError("Konnte die Video-Links nicht generieren. Die KI hat keine verwertbare Antwort geliefert.");
+    }
+  } catch (e) {
+    console.error("API-Fehler (Video Search):", e);
+    queueErrorReport('gemini-video-search-api', e);
+    flushErrorReports(db, userId, appId);
+    setError("Fehler beim Suchen der Video-Anleitungen: " + e.message);
+  } finally {
+    setIsGeneratingVideos(false);
+  }
+}, [solutionText, selectedTrade, db, userId]);
 // --- FUNKTION: PDF-EXPORT ---
 const handleExportPdf = useCallback(() => {
 if (!solutionText) {
@@ -869,16 +935,20 @@ isGeneratingSafety ? 'bg-teal-400 cursor-wait' : 'bg-teal-600 hover:bg-teal-700'
 )}
 <span className="mt-1">✨ Sicherheits-Check</span>
 </button>
-{/* Video-Anleitung Button (3/4) - Farbe: Amber - IMMER DEAKTIVIERT */}
+{/* Video-Anleitung Button (3/4) - Farbe: Amber */}
 <button
 onClick={callGeminiVideoSearch}
-disabled={true}
+disabled={isGeneratingVideos || !solutionText}
 className={`flex flex-col items-center justify-center p-2 rounded-xl font-bold text-white shadow-md transition duration-300 text-xs transform active:scale-[0.98] ${
-'bg-gray-400 cursor-not-allowed opacity-70'
+isGeneratingVideos ? 'bg-amber-400 cursor-wait' : 'bg-amber-600 hover:bg-amber-700'
 }`}
 >
+{isGeneratingVideos ? (
+<Loader2 className="w-4 h-4 animate-spin" />
+) : (
 <Video className="w-4 h-4" />
-<span className="mt-1">Video-Anleitung (Inaktiv)</span>
+)}
+<span className="mt-1">✨ Video-Anleitung</span>
 </button>
 {/* AKZENT-FEATURE: Kundenbericht Button (BLEIBT BLAU) */}
 <button
