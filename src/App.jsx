@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
 Camera, Image, Upload, Wrench, Loader2, Zap, AlertTriangle, CheckCircle,
 Smartphone, FileText, Pipette, Paintbrush, Flower, Hammer, BrickWall, Home,
-Settings, MoreHorizontal, User, Package, Shield, Video, RefreshCw, Volume2,
+Settings, MoreHorizontal, User, Package, Shield, Video, RefreshCw,
 VolumeX, List, X
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
@@ -24,7 +24,6 @@ const SYSTEM_INSTRUCTION = "Du bist ein erfahrener Bauingenieur und Zimmermann, 
 const SYSTEM_INSTRUCTION_MATERIAL = "Du bist ein Einkaufsmanager für Handwerksbetriebe. Analysiere den folgenden Lösungsvorschlag und erstelle eine JSON-Liste der benötigten Materialien und Werkzeuge. Gib nur das JSON-Array aus.";
 const SYSTEM_INSTRUCTION_SAFETY = "Du bist ein Arbeitsschutz-Experte (Sicherheitstechniker). Analysiere den folgenden Lösungsvorschlag und identifiziere alle potenziellen Risiken. Erstelle eine kurze Liste von Sicherheitstipps und notwendiger persönlicher Schutzausrüstung (PSA). Antworte im Markdown-Format.";
 const SYSTEM_INSTRUCTION_CLIENT_REPORT = "Du bist ein Projektmanager mit ausgezeichneten Kommunikationsfähigkeiten. Nimm die technische Lösung und formuliere eine professionelle, jargonfreie Zusammenfassung für den Endkunden oder Projektleiter. Füge am Ende eine Liste der administrativen nächsten Schritte (z.B. Genehmigungen, Abnahmen) hinzu, die erforderlich sind. Antworte im Markdown-Format.";
-const SYSTEM_INSTRUCTION_VIDEO_FINAL = "Du bist ein YouTube-Experte für Handwerks-Tutorials. Basierend auf dem folgenden Lösungsvorschlag, suche und wähle die 3-5 relevantesten und aktuellsten YouTube-Video-Links aus, die eine visuelle Anleitung zur Reparatur bieten. Ignoriere alle Nicht-YouTube-Links. Gib nur das JSON-Array der Links zurück.";
 // JSON Schema für die Materialliste
 const MATERIAL_SCHEMA = {
 type: "ARRAY",
@@ -36,18 +35,6 @@ properties: {
 "quantity": { "type": "STRING", "description": "Benötigte Menge (z.B. '5 kg', '1 Rolle', '1 Stk')" }
 },
 required: ["category", "item", "quantity"]
-}
-};
-// JSON Schema für Video-Links
-const VIDEO_LINK_SCHEMA = {
-type: "ARRAY",
-items: {
-type: "OBJECT",
-properties: {
-"title": { "type": "STRING", "description": "Kurze Beschreibung des Videos oder Titel" },
-"uri": { "type": "STRING", "description": "Die URL des YouTube-Videos" }
-},
-required: ["title", "uri"]
 }
 };
 // Liste der Gewerke mit Icons und Farben für die visuelle Auswahl
@@ -64,59 +51,6 @@ const TRADE_ICONS = [
 { name: "Sonstig...", icon: MoreHorizontal, color: "bg-pink-600", hover: "hover:bg-pink-700" },
 ];
 /**
-* Hilfsfunktion zum Schreiben von Strings in DataView (für WAV-Generierung)
-*/
-const writeString = (view, offset, string) => {
-for (let i = 0; i < string.length; i++) {
-view.setUint8(offset + i, string.charCodeAt(i));
-}
-};
-/**
-* Hilfsfunktion zum Erstellen eines WAV-Blobs aus PCM-Daten
-* Nimmt Int16Array (PCM 16-bit signed) und Sample Rate.
-*/
-const pcmToWav = (pcm16, sampleRate) => {
-const numChannels = 1;
-const bitsPerSample = 16;
-const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
-const blockAlign = numChannels * (bitsPerSample / 8);
-const dataSize = pcm16.byteLength;
-const buffer = new ArrayBuffer(44 + dataSize);
-const view = new DataView(buffer);
-// RIFF identifier
-writeString(view, 0, 'RIFF');
-// file length
-view.setUint32(4, 36 + dataSize, true);
-// RIFF type
-writeString(view, 8, 'WAVE');
-// format chunk identifier
-writeString(view, 12, 'fmt ');
-// format chunk length
-view.setUint32(16, 16, true);
-// sample format (raw)
-view.setUint16(20, 1, true);
-// channel count
-view.setUint16(22, numChannels, true);
-// sample rate
-view.setUint32(24, sampleRate, true);
-// byte rate (sample rate * block align)
-view.setUint32(28, byteRate, true);
-// block align (channels * bits per sample / 8)
-view.setUint16(32, blockAlign, true);
-// bits per sample
-view.setUint16(34, bitsPerSample, true);
-// data chunk identifier
-writeString(view, 36, 'data');
-// data chunk length
-view.setUint32(40, dataSize, true);
-// PCM data
-let offset = 44;
-for (let i = 0; i < pcm16.length; i++, offset += 2) {
-view.setInt16(offset, pcm16[i], true);
-}
-return new Blob([buffer], { type: 'audio/wav' });
-};
-/**
 * Funktion zur Konvertierung einer Datei in Base64 (wird für die API benötigt)
 */
 const fileToBase64 = (file) => {
@@ -126,18 +60,6 @@ reader.readAsDataURL(file);
 reader.onload = () => resolve(reader.result.split(',')[1]);
 reader.onerror = (error) => reject(error);
 });
-};
-/**
-* Hilfsfunktion zum Konvertieren von Base64 zu ArrayBuffer
-*/
-const base64ToArrayBuffer = (base64) => {
-const binaryString = window.atob(base64);
-const len = binaryString.length;
-const bytes = new Uint8Array(len);
-for (let i = 0; i < len; i++) {
-bytes[i] = binaryString.charCodeAt(i);
-}
-return bytes.buffer;
 };
 /**
 * Funktion mit Exponential Backoff für API-Anrufe, um Throttling zu behandeln
@@ -154,8 +76,10 @@ throw new Error(`API error: ${response.statusText}`, { cause: response.status })
 }
 return response;
 } catch (error) {
-// Wenn maximale Wiederholungen erreicht sind oder der Fehler nicht behebbar ist (z.B. 401, 404), brechen wir ab
-if (i === maxRetries - 1 || error.cause < 400 || error.cause > 500) {
+// Netzwerkfehler (kein HTTP-Status vorhanden) sowie 429/5xx sind behebbar und werden
+// wiederholt; alles andere (z.B. 401, 404) brechen wir sofort ab
+const isRetryable = error.cause === undefined || error.cause === 429 || error.cause >= 500;
+if (i === maxRetries - 1 || !isRetryable) {
 throw error;
 }
 // Exponentieller Backoff
@@ -313,10 +237,6 @@ const [isGeneratingMaterials, setIsGeneratingMaterials] = useState(false);
 const [isGeneratingSafety, setIsGeneratingSafety] = useState(false);
 const [isGeneratingVideos, setIsGeneratingVideos] = useState(false);
 const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-// NEUE TTS States (für zukünftige Nutzung)
-const [isGeneratingTTS, setIsGeneratingTTS] = useState(false);
-const [ttsAudio, setTtsAudio] = useState(null);
-const [isTtsPlaying, setIsTtsPlaying] = useState(false);
 // --- EFFECT: FIREBASE INITIALISIERUNG UND ANONYME ANMELDUNG ---
 useEffect(() => {
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
@@ -378,18 +298,12 @@ setIsGeneratingMaterials(false);
 setIsGeneratingSafety(false);
 setIsGeneratingVideos(false);
 setIsGeneratingReport(false);
-// TTS reset
-if (ttsAudio) {
-ttsAudio.pause();
-if (ttsAudio.src) URL.revokeObjectURL(ttsAudio.src);
-setTtsAudio(null);
-}
-setIsGeneratingTTS(false);
-setIsTtsPlaying(false);
 // Dateiauswahl zurücksetzen (für saubere erneute Auswahl)
-const fileInput = document.getElementById('camera-input') || document.getElementById('gallery-input') || document.getElementById('cloud-input');
+['camera-input', 'gallery-input', 'cloud-input'].forEach((id) => {
+const fileInput = document.getElementById(id);
 if (fileInput) fileInput.value = '';
-}, [ttsAudio]);
+});
+}, []);
 // --- FUNKTION: NUR FEHLERZUSTAND ZURÜCKSETZEN (Bild bleibt erhalten) ---
 const clearError = useCallback(() => {
 setError(null);
@@ -406,15 +320,6 @@ setSolutionText(item.solutionText || null);
 setSelectedImageBase64(null);
 setShowHistory(false);
 }, [handleReset]);
-// --- EFFECT: Cleanup effect for TTS audio on unmount ---
-useEffect(() => {
-return () => {
-if (ttsAudio) {
-ttsAudio.pause();
-if (ttsAudio.src) URL.revokeObjectURL(ttsAudio.src);
-}
-};
-}, [ttsAudio]);
 // --- FUNKTION: DATEIAUSWAHL ---
 const handleFileChange = useCallback(async (event) => {
 const file = event.target.files[0];
@@ -506,13 +411,6 @@ setSafetyTips(null);
 setVideoLinks(null);
 setClientReport(null);
 setSources([]);
-// TTS zurücksetzen
-if (ttsAudio) {
-ttsAudio.pause();
-if (ttsAudio.src) URL.revokeObjectURL(ttsAudio.src);
-setTtsAudio(null);
-setIsTtsPlaying(false);
-}
 const mimeType = 'image/jpeg';
 const tradeContext = selectedTrade && selectedTrade !== "Sonstiges..."
 ? `[GEWERK: ${selectedTrade}]. `
@@ -583,13 +481,7 @@ setError("Fehler bei der Verbindung zur Analyse: " + e.message);
 } finally {
 setIsAnalyzing(false);
 }
-}, [selectedImageBase64, problemDescription, selectedTrade, ttsAudio, saveAnalysis]);
-// --- FUNKTION: Text-to-Speech generieren (DEAKTIVIERT wegen API-Berechtigung) ---
-const callGeminiTTSAPI = useCallback(async (textToSpeak) => {
-if (!textToSpeak) return;
-setError("TTS-Funktion ist in dieser Umgebung aufgrund von API-Key Berechtigungsproblemen (Status 401) deaktiviert.");
-return;
-}, []);
+}, [selectedImageBase64, problemDescription, selectedTrade, saveAnalysis]);
 // --- FUNKTION: Materialliste generieren (JSON Mode) ---
 const callGeminiMaterialsAPI = useCallback(async () => {
 if (!solutionText) return;
@@ -727,77 +619,8 @@ setError("Fehler beim Generieren des Kundenberichts: " + e.message);
 setIsGeneratingReport(false);
 }
 }, [solutionText]);
-// --- FUNKTION: Video-Suchanfragen generieren (Single API Call with Grounding) ---
-const callGeminiVideoSearch = useCallback(async () => {
-// DIESE FUNKTION IST VORERST DEAKTIVIERT
-// if (!solutionText) return;
-// setIsGeneratingVideos(true);
-// setVideoLinks(null);
-// const userQuery = `Finde die besten 3 bis 5 YouTube-Video-Anleitungen für diese Lösung im Gewerk ${selectedTrade}: ${solutionText}`;
-// // Payload mit Google Search Tool und JSON-Schema
-// const payload = {
-// contents: [{ parts: [{ text: userQuery }] }],
-// systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION_VIDEO_FINAL }] },
-// tools: [{ "google_search": {} }],
-// generationConfig: {
-// responseMimeType: "application/json",
-// responseSchema: VIDEO_LINK_SCHEMA,
-// }
-// };
-// try {
-// const response = await fetchWithRetry(apiUrl, {
-// method: 'POST',
-// headers: { 'Content-Type': 'application/json' },
-// body: JSON.stringify(payload)
-// });
-// const responseText = await response.text();
-// if (!response.ok || !responseText) {
-// const errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
-// console.error("API Response Fehler:", errorMsg);
-// throw new Error("Fehler bei der Video-Anfrage oder leere Antwort.");
-// }
-// let result;
-// try {
-// result = JSON.parse(responseText);
-// } catch (parseError) {
-// console.error("JSON-Parse-Fehler:", parseError, "Antworttext:", responseText);
-// throw new Error("Ungültige Antwortstruktur von der KI.");
-// }
-// const responseTextContent = result.candidates?.[0]?.content?.parts?.[0]?.text;
-// if (responseTextContent && responseTextContent.trim().length > 0) {
-// try {
-// // Robuster Regex-Match, um JSON-Array zu extrahieren
-// const jsonMatch = responseTextContent.match(/\[\s*\{[\s\S]*\}\s*\]/);
-// if (!jsonMatch || !jsonMatch[0]) {
-// console.error("JSON Regex Match Fehler:", responseTextContent);
-// setError("Die KI-Antwort enthielt kein gültiges JSON-Array. Bitte erneut versuchen.");
-// return;
-// }
-// const jsonString = jsonMatch[0];
-// const parsedJson = JSON.parse(jsonString);
-// // Validierung der Links
-// const validLinks = parsedJson.filter(link =>
-// link.uri && link.uri.includes('youtube.com/watch') && link.title
-// );
-// if (validLinks.length > 0) {
-// setVideoLinks(validLinks);
-// } else {
-// setError("Die KI hat Suchbegriffe generiert, aber keine passenden YouTube-Video-Links gefunden.");
-// }
-// } catch (parseError) {
-// console.error("JSON Parsing Fehler (Video Search):", parseError);
-// setError("Fehler beim Verarbeiten der KI-Antwort (ungültiges JSON-Format, evtl. zusätzlicher Text im Output).");
-// }
-// } else {
-// setError("Konnte die Video-Links nicht generieren. Die KI hat keine verwertbare Antwort geliefert.");
-// }
-// } catch (e) {
-// console.error("API-Fehler (Video Search):", e);
-// setError("Fehler beim Suchen der Video-Anleitungen: " + e.message);
-// } finally {
-// setIsGeneratingVideos(false);
-// }
-}, [solutionText, selectedTrade]);
+// --- FUNKTION: Video-Suchanfragen generieren (Feature noch nicht implementiert, Button bleibt deaktiviert) ---
+const callGeminiVideoSearch = useCallback(() => {}, []);
 // --- FUNKTION: PDF-EXPORT ---
 const handleExportPdf = useCallback(() => {
 if (!solutionText) {
@@ -1246,7 +1069,7 @@ if (!isAuthReady || showAuth) {
 // Ladebildschirm während der Firebase-Authentifizierung
 return (
 <div
-className="min-h-screen flex justify-center items-center bg-cover bg-center bg-fixed bg-no-repeat"
+className="min-h-screen flex justify-center items-center bg-gray-800 bg-cover bg-center bg-fixed bg-no-repeat"
 style={{ backgroundImage: "url(https://storage.googleapis.com/bacon-images-prod/gemini/app_builder/werkzeuge.jpg)" }}
 >
 <div className="absolute inset-0 bg-black/40 z-0"></div>
@@ -1260,7 +1083,7 @@ style={{ backgroundImage: "url(https://storage.googleapis.com/bacon-images-prod/
 // Haupt-App-Ansicht
 return (
 <div
-className="min-h-screen p-4 sm:p-6 flex justify-center relative bg-cover bg-center bg-fixed bg-no-repeat"
+className="min-h-screen p-4 sm:p-6 flex justify-center relative bg-gray-800 bg-cover bg-center bg-fixed bg-no-repeat"
 style={{
 backgroundImage: "url(https://storage.googleapis.com/bacon-images-prod/gemini/app_builder/werkzeuge.jpg)",
 }}
