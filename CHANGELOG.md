@@ -8,6 +8,30 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.11.0] – 2026-08-11
+
+### Hinzugefügt
+- **Admin-Bereich für Fehlerreports.** Neuer PIN-geschützter Admin-Bereich
+  (`src/AdminPanel.jsx`, erreichbar über einen unauffälligen Link im
+  Profil-Modal), der alle über `errorReporting.js` gesammelten Fehlerreports
+  über alle Nutzer hinweg auflistet (Collection-Group-Query auf
+  `errorReports`) — bisher ließen sie sich nur manuell in der Firebase
+  Console einsehen, wovon niemand aktiv informiert wurde. Jeder Eintrag zeigt
+  Kontext, vollständige (ausgeschriebene) Fehlermeldung, Stacktrace,
+  App-Version, User-Agent sowie eine statische Ursache-/Lösungshilfe je
+  bekanntem Fehlerkontext (`ERROR_CONTEXT_INFO` in `errorReporting.js`). Ein
+  Button je Eintrag öffnet einen vorausgefüllten `mailto:`-Link (Ziel via
+  `VITE_ADMIN_EMAIL`, Default `marco.schlude@gmail.com`) mit allen Details,
+  damit der Fehler direkt an den Admin gemeldet werden kann.
+  **Sicherheitshinweis:** Der PIN (`VITE_ADMIN_PIN`) ist reiner UI-Sichtschutz
+  und landet im Client-Bundle. Damit die Collection-Group-Query technisch
+  funktioniert, erlaubt `firestore.rules` jedem authentifizierten (auch
+  anonymen) Nutzer Lesezugriff auf `errorReports` — wer die Firestore-SDK
+  direkt anspricht, kommt auch ohne PIN an die Reports. Für eine spätere
+  Ausrollung mit echten Fremdnutzern sollte das durch echten Admin-Login
+  (fester Account + Regel auf `request.auth.uid`) ersetzt werden. Schreiben
+  bleibt weiterhin ausschließlich dem jeweiligen Besitzer vorbehalten.
+
 ## [1.10.0] – 2026-08-11
 
 ### Hinzugefügt

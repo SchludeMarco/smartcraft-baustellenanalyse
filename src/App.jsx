@@ -3,7 +3,7 @@ import {
 Camera, Image, Upload, Wrench, Loader2, Zap, AlertTriangle, CheckCircle,
 Smartphone, FileText, Pipette, Paintbrush, Flower, Hammer, BrickWall, Home,
 Settings, MoreHorizontal, User, Package, Shield, Video, RefreshCw,
-VolumeX, List, X
+VolumeX, List, X, Lock
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import {
@@ -15,6 +15,7 @@ orderBy, limit, serverTimestamp
 } from 'firebase/firestore';
 import { firebaseConfig } from './firebaseConfig';
 import { queueErrorReport, flushErrorReports } from './errorReporting';
+import AdminPanel from './AdminPanel';
 
 const appId = 'smartcraft-baustellenanalyse';
 // Gemini-Aufrufe laufen über eine eigene Serverless-Function (api/gemini.js),
@@ -222,6 +223,7 @@ const [userId, setUserId] = useState(null);
 const [isAuthReady, setIsAuthReady] = useState(false);
 const [showAuth, setShowAuth] = useState(false);
 const [showHistory, setShowHistory] = useState(false); // Steuert das Historien-Modal
+const [showAdmin, setShowAdmin] = useState(false); // Steuert das Admin-Modal (Fehlerreports)
 // --- App States ---
 const [selectedImageBase64, setSelectedImageBase64] = useState(null);
 const [problemDescription, setProblemDescription] = useState('');
@@ -1149,6 +1151,13 @@ className="flex items-center px-4 py-2 bg-red-600 text-white font-semibold round
 Sitzung beenden
 </button>
 </div>
+<button
+onClick={() => { setShowAdmin(true); setShowProfile(false); }}
+className="w-full mt-3 flex items-center justify-center text-xs text-gray-400 hover:text-gray-600 transition"
+>
+<Lock className="w-3 h-3 mr-1" />
+Admin-Bereich
+</button>
 </div>
 </div>
 )}
@@ -1188,6 +1197,13 @@ userId={userId}
 appId={appId}
 onClose={() => setShowHistory(false)}
 onSelect={handleSelectAnalysis}
+/>
+)}
+{/* Admin-Modal (Fehlerreports) */}
+{showAdmin && (
+<AdminPanel
+db={db}
+onClose={() => setShowAdmin(false)}
 />
 )}
 {/* Header mit Profil-Button - ANGEPASST AN BILDSTIL (kein Verlauf, nur Orange/Rot) */}
