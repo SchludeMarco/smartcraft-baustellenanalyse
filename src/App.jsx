@@ -14,6 +14,7 @@ getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs,
 orderBy, limit, serverTimestamp
 } from 'firebase/firestore';
 import { firebaseConfig } from './firebaseConfig';
+import { queueErrorReport, flushErrorReports } from './errorReporting';
 
 const appId = 'smartcraft-baustellenanalyse';
 // Gemini-Aufrufe laufen über eine eigene Serverless-Function (api/gemini.js),
@@ -252,6 +253,7 @@ authInstance = getAuth(app);
 dbInstance = getFirestore(app);
 } catch (e) {
 console.error("Fehler bei der Firebase-Initialisierung:", e);
+queueErrorReport('firebase-init', e);
 setIsAuthReady(true);
 return;
 }
@@ -266,6 +268,7 @@ await signInAnonymously(authInstance);
 }
 } catch (e) {
 console.error("Fehler bei der initialen anonymen Anmeldung:", e);
+queueErrorReport('firebase-auth', e);
 setError("Kritischer Fehler: Die App konnte keine anonyme Sitzung starten. Historie nicht möglich.");
 }
 }
@@ -282,6 +285,15 @@ setIsAuthReady(true);
 initializeAuth();
 return () => unsubscribe();
 }, []);
+// --- EFFECT: Wartende Fehlerreports senden, sobald eine authentifizierte
+// Firestore-Verbindung besteht (initial + bei Wiederherstellung der Internetverbindung) ---
+useEffect(() => {
+if (!db || !userId) return;
+flushErrorReports(db, userId, appId);
+const handleOnline = () => flushErrorReports(db, userId, appId);
+window.addEventListener('online', handleOnline);
+return () => window.removeEventListener('online', handleOnline);
+}, [db, userId]);
 // --- FUNKTION: ALLES ZURÜCKSETZEN ---
 const handleReset = useCallback(() => {
 setSelectedImageBase64(null);
@@ -477,11 +489,13 @@ setError("Konnte keine gültige Antwort von der KI erhalten. Mögliches Problem:
 }
 } catch (e) {
 console.error("API-Fehler:", e);
+queueErrorReport('gemini-vision-api', e);
+flushErrorReports(db, userId, appId);
 setError("Fehler bei der Verbindung zur Analyse: " + e.message);
 } finally {
 setIsAnalyzing(false);
 }
-}, [selectedImageBase64, problemDescription, selectedTrade, saveAnalysis]);
+}, [selectedImageBase64, problemDescription, selectedTrade, saveAnalysis, db, userId]);
 // --- FUNKTION: Materialliste generieren (JSON Mode) ---
 const callGeminiMaterialsAPI = useCallback(async () => {
 if (!solutionText) return;
@@ -530,11 +544,13 @@ setError("Konnte keine Materialliste erstellen. Die KI hat keine strukturierte A
 }
 } catch (e) {
 console.error("API-Fehler (Material):", e);
+queueErrorReport('gemini-materials-api', e);
+flushErrorReports(db, userId, appId);
 setError("Fehler beim Generieren der Materialliste: " + e.message);
 } finally {
 setIsGeneratingMaterials(false);
 }
-}, [solutionText]);
+}, [solutionText, db, userId]);
 // --- FUNKTION: Sicherheits-Check generieren (Text Mode) ---
 const callGeminiSafetyAPI = useCallback(async () => {
 if (!solutionText) return;
@@ -572,11 +588,13 @@ setError("Konnte den Sicherheits-Check nicht erstellen.");
 }
 } catch (e) {
 console.error("API-Fehler (Sicherheit):", e);
+queueErrorReport('gemini-safety-api', e);
+flushErrorReports(db, userId, appId);
 setError("Fehler beim Generieren des Sicherheits-Checks: " + e.message);
 } finally {
 setIsGeneratingSafety(false);
 }
-}, [solutionText]);
+}, [solutionText, db, userId]);
 // --- FUNKTION: Kundenbericht generieren (Text Mode) ---
 const callGeminiClientReportAPI = useCallback(async () => {
 if (!solutionText) return;
@@ -614,11 +632,13 @@ setError("Konnte den Kundenbericht nicht erstellen.");
 }
 } catch (e) {
 console.error("API-Fehler (Kundenbericht):", e);
+queueErrorReport('gemini-client-report-api', e);
+flushErrorReports(db, userId, appId);
 setError("Fehler beim Generieren des Kundenberichts: " + e.message);
 } finally {
 setIsGeneratingReport(false);
 }
-}, [solutionText]);
+}, [solutionText, db, userId]);
 // --- FUNKTION: Video-Suchanfragen generieren (Feature noch nicht implementiert, Button bleibt deaktiviert) ---
 const callGeminiVideoSearch = useCallback(() => {}, []);
 // --- FUNKTION: PDF-EXPORT ---

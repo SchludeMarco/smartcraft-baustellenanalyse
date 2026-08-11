@@ -1,4 +1,5 @@
 import React from 'react';
+import { queueErrorReport } from './errorReporting';
 
 class ErrorBoundary extends React.Component {
   state = { hasError: false };
@@ -9,6 +10,7 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     console.error('Unerwarteter Fehler in der App:', error, info);
+    queueErrorReport('react-error-boundary', error);
   }
 
   render() {
