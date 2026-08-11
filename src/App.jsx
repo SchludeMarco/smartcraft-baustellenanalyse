@@ -46,18 +46,35 @@ properties: {
 required: ["category", "item", "quantity"]
 }
 };
-// Liste der Gewerke mit Icons und Farben für die visuelle Auswahl
+// Gedeckte, ruhige Farbwelt je Gewerk (kein "Warnfarben"-Rot, keine grellen
+// Töne) — jedes Gewerk hat einen Akzent-, Hover- und einen hellen "Soft"-Ton
+// für Flächen/Badges. Die App übernimmt diese Palette global, sobald ein
+// Gewerk gewählt ist (siehe `theme` in der App-Komponente).
+const TRADE_THEMES = {
+"Klempner": { accent: "#4F7396", accentDark: "#3E5C79", accentSoft: "#E7EDF2" },
+"Elektriker": { accent: "#A67C40", accentDark: "#856434", accentSoft: "#F1E9DB" },
+"Maler": { accent: "#6E8F63", accentDark: "#59734F", accentSoft: "#E7EEE4" },
+"Gärtner": { accent: "#6F8B4E", accentDark: "#5A703F", accentSoft: "#E9EEE0" },
+"Zimmerer": { accent: "#8A7156", accentDark: "#6E5A44", accentSoft: "#EFEAE2" },
+"Mechaniker": { accent: "#93594A", accentDark: "#76473B", accentSoft: "#EEE2DE" },
+"Maurer": { accent: "#A9764E", accentDark: "#875E3E", accentSoft: "#F1E6DC" },
+"Dachdecker": { accent: "#547E7E", accentDark: "#436565", accentSoft: "#E4ECEC" },
+"Allround-Handwerker": { accent: "#5F6E8C", accentDark: "#4C5970", accentSoft: "#E6E9F0" },
+"Sonstig...": { accent: "#7C7670", accentDark: "#635E59", accentSoft: "#ECEBE9" },
+};
+const DEFAULT_TRADE = "Allround-Handwerker";
+// Liste der Gewerke mit Icons für die visuelle Auswahl (Farben kommen aus TRADE_THEMES)
 const TRADE_ICONS = [
-{ name: "Klempner", icon: Pipette, color: "bg-blue-600", hover: "hover:bg-blue-700" },
-{ name: "Elektriker", icon: Zap, color: "bg-orange-600", hover: "hover:bg-orange-700" },
-{ name: "Maler", icon: Paintbrush, color: "bg-green-600", hover: "hover:bg-green-700" },
-{ name: "Gärtner", icon: Flower, color: "bg-emerald-600", hover: "hover:bg-emerald-700" },
-{ name: "Zimmerer", icon: Hammer, color: "bg-gray-600", hover: "hover:bg-gray-700" },
-{ name: "Mechaniker", icon: Wrench, color: "bg-red-600", hover: "hover:bg-red-700" },
-{ name: "Maurer", icon: BrickWall, color: "bg-yellow-600", hover: "hover:bg-yellow-700" },
-{ name: "Dachdecker", icon: Home, color: "bg-cyan-600", hover: "hover:bg-cyan-700" },
-{ name: "Allround-Handwerker", icon: Settings, color: "bg-indigo-600", hover: "hover:bg-indigo-700" },
-{ name: "Sonstig...", icon: MoreHorizontal, color: "bg-pink-600", hover: "hover:bg-pink-700" },
+{ name: "Klempner", icon: Pipette },
+{ name: "Elektriker", icon: Zap },
+{ name: "Maler", icon: Paintbrush },
+{ name: "Gärtner", icon: Flower },
+{ name: "Zimmerer", icon: Hammer },
+{ name: "Mechaniker", icon: Wrench },
+{ name: "Maurer", icon: BrickWall },
+{ name: "Dachdecker", icon: Home },
+{ name: "Allround-Handwerker", icon: Settings },
+{ name: "Sonstig...", icon: MoreHorizontal },
 ];
 /**
 * Funktion zur Konvertierung einer Datei in Base64 (wird für die API benötigt)
@@ -108,13 +125,16 @@ await new Promise(resolve => setTimeout(resolve, delay));
 throw new Error("Maximum retries reached.");
 };
 // Komponente für einen einzelnen Handwerker-Button
-const TradeButton = ({ name, icon: Icon, color, isSelected, onClick, hoverClass }) => (
+// Nutzt eine per Button gesetzte CSS-Variable statt fixer Tailwind-Farbklassen,
+// damit Fläche/Hover/Ring aus der gedeckten TRADE_THEMES-Palette kommen und
+// sich beim Wechsel des Gewerks weich (transition-colors) einblenden.
+const TradeButton = ({ name, icon: Icon, theme, isSelected, onClick }) => (
 <button
 onClick={() => onClick(name)}
-// BLAUER AKZENTRING für Auswahl (V2 Highlight)
-className={`flex flex-col items-center justify-center p-2 rounded-xl transition duration-200 shadow-lg transform active:scale-[0.98]
-${isSelected ? 'ring-4 ring-offset-2 ring-blue-500 shadow-2xl' : `opacity-90 ${hoverClass} hover:opacity-100`}
-${color} text-white
+style={{ '--tbtn-bg': theme.accent, '--tbtn-bg-hover': theme.accentDark }}
+className={`flex flex-col items-center justify-center p-2 rounded-xl transition-colors duration-500 ease-in-out shadow-lg transform active:scale-[0.98]
+bg-(--tbtn-bg) hover:bg-(--tbtn-bg-hover) text-white
+${isSelected ? 'ring-4 ring-offset-2 ring-(--tbtn-bg) shadow-2xl' : 'opacity-90 hover:opacity-100'}
 `}
 >
 <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-white/30 mb-1">
@@ -247,6 +267,14 @@ const [sources, setSources] = useState([]);
 const [isAnalyzing, setIsAnalyzing] = useState(false);
 const [error, setError] = useState(null);
 const [selectedTrade, setSelectedTradeState] = useState('Allround-Handwerker');
+// App-weites Farbthema: folgt dem gewählten Gewerk (gedeckte Töne, siehe
+// TRADE_THEMES). Header, CTAs und Akzent-Icons lesen diese CSS-Variablen;
+// zusammen mit transition-colors ergibt sich beim Gewerkwechsel ein weicher
+// Farbwechsel statt eines harten Umschaltens.
+const theme = useMemo(
+() => TRADE_THEMES[selectedTrade] || TRADE_THEMES[DEFAULT_TRADE],
+[selectedTrade]
+);
 // --- LLM Feature States ---
 const [materialList, setMaterialList] = useState(null);
 const [safetyTips, setSafetyTips] = useState(null);
@@ -1090,8 +1118,8 @@ Kundenbericht & Nächste Schritte
 <button
 onClick={handleExportPdf}
 disabled={!solutionText || isGeneratingMaterials || isGeneratingSafety || isGeneratingVideos || isGeneratingReport}
-// PRIMÄRFARBE: Rot/Orange für Export-Taste
-className="flex items-center px-4 py-2 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition duration-300 transform active:scale-[0.98]"
+// Primärfarbe folgt dem gewählten Gewerk
+className="flex items-center px-4 py-2 bg-(--accent) text-white font-semibold rounded-xl shadow-md hover:bg-(--accent-dark) transition-colors duration-500 ease-in-out transform active:scale-[0.98]"
 >
 <FileText className="w-4 h-4 mr-2" />
 Als PDF exportieren
@@ -1102,19 +1130,19 @@ Als PDF exportieren
 }
 // Standard-Willkommensmeldung
 return (
-// BLAUER AKZENT: Gestrichelte Linie und Icon Farbe
-<div className="p-8 text-center text-gray-500 bg-white rounded-xl shadow-inner border-4 border-dashed border-blue-200">
-<Smartphone className="w-8 h-8 mx-auto text-blue-500 mb-3" />
+// Akzent (Rahmen & Icon) folgt dem gewählten Gewerk
+<div className="p-8 text-center text-gray-500 bg-white rounded-xl shadow-inner border-4 border-dashed border-(--accent-soft) transition-colors duration-700 ease-in-out">
+<Smartphone className="w-8 h-8 mx-auto text-(--accent) mb-3 transition-colors duration-700 ease-in-out" />
 <p className="font-semibold text-lg text-gray-800">Starten Sie Ihre Bauanalyse</p>
 <p className="text-sm mt-2 text-gray-600 font-bold">
 Um die Analyse zu starten, benötigen Sie **eines** der folgenden Elemente:
 </p>
 <ul className="text-sm mt-3 space-y-1 text-gray-700 text-left mx-auto max-w-xs">
 <li>
-<span className='font-bold text-red-600 mr-1'>1.</span> Ein Foto der Problemstelle **(Abschnitt 2)**
+<span className='font-bold text-(--accent) mr-1 transition-colors duration-500 ease-in-out'>1.</span> Ein Foto der Problemstelle **(Abschnitt 2)**
 </li>
 <li>
-<span className='font-bold text-red-600 mr-1'>2.</span> Eine detaillierte Problembeschreibung **(Abschnitt 2)**
+<span className='font-bold text-(--accent) mr-1 transition-colors duration-500 ease-in-out'>2.</span> Eine detaillierte Problembeschreibung **(Abschnitt 2)**
 </li>
 </ul>
 <p className="text-xs mt-4 text-gray-500">Wählen Sie zuerst Ihr Gewerk (Abschnitt 1) für eine präzisere Diagnose.</p>
@@ -1156,15 +1184,15 @@ onClick={e => e.stopPropagation()}
 >
 <div className="flex justify-between items-center border-b pb-3 mb-4">
 <h3 className="text-xl font-bold text-gray-800 flex items-center">
-{/* PRIMÄRFARBE: Profil-Icon Rot */}
-<User className="w-5 h-5 mr-2 text-red-600" />
+{/* Profil-Icon folgt der Gewerk-Akzentfarbe */}
+<User className="w-5 h-5 mr-2 text-(--accent) transition-colors duration-500 ease-in-out" />
 Anonyme Sitzung
 </h3>
 <button onClick={() => setShowProfile(false)} className="text-gray-400 hover:text-gray-600 text-2xl font-light"><X className="w-6 h-6" /></button>
 </div>
 <p className="text-sm text-gray-600 mb-4 break-words p-2 bg-yellow-50 rounded-lg border border-yellow-200">
 <strong className="block text-xs uppercase text-yellow-700 mb-1">Hinweis zur Historie:</strong>
-<span className="font-semibold text-gray-700 break-words">Sie sind anonym angemeldet. Beim späteren Ausrollen als Android App können Sie dies durch <span className='font-bold text-red-600'>Google Sign-In</span> ersetzen, um ein dauerhaftes Konto zu erhalten.</span>
+<span className="font-semibold text-gray-700 break-words">Sie sind anonym angemeldet. Beim späteren Ausrollen als Android App können Sie dies durch <span className='font-bold text-(--accent) transition-colors duration-500 ease-in-out'>Google Sign-In</span> ersetzen, um ein dauerhaftes Konto zu erhalten.</span>
 </p>
 <p className="text-sm text-gray-600 mb-4 break-words">
 <strong className="block text-xs uppercase text-gray-500 mb-1">Temporäre ID:</strong>
@@ -1209,7 +1237,10 @@ className="min-h-screen flex justify-center items-center bg-gray-800 bg-cover bg
 style={{ backgroundImage: "url(https://storage.googleapis.com/bacon-images-prod/gemini/app_builder/werkzeuge.jpg)" }}
 >
 <div className="absolute inset-0 bg-black/40 z-0"></div>
-<div className='text-white p-6 bg-red-600 rounded-xl max-w-sm text-center'>
+<div
+style={{ '--accent': theme.accent }}
+className='text-white p-6 bg-(--accent) rounded-xl max-w-sm text-center transition-colors duration-700 ease-in-out'
+>
 <Loader2 className="w-8 h-8 mx-auto animate-spin mb-3" />
 <p className='font-bold'>Starte Authentifizierung...</p>
 </div>
@@ -1222,6 +1253,9 @@ return (
 className="min-h-screen p-4 sm:p-6 flex justify-center relative bg-gray-800 bg-cover bg-center bg-fixed bg-no-repeat"
 style={{
 backgroundImage: "url(https://storage.googleapis.com/bacon-images-prod/gemini/app_builder/werkzeuge.jpg)",
+'--accent': theme.accent,
+'--accent-dark': theme.accentDark,
+'--accent-soft': theme.accentSoft,
 }}
 >
 <div className="absolute inset-0 bg-black/40 z-0"></div>
@@ -1243,8 +1277,8 @@ db={db}
 onClose={() => setShowAdmin(false)}
 />
 )}
-{/* Header mit Profil-Button - ANGEPASST AN BILDSTIL (kein Verlauf, nur Orange/Rot) */}
-<header className="w-full p-5 bg-red-600 shadow-2xl relative">
+{/* Header mit Profil-Button - Farbe folgt dem gewählten Gewerk (weicher Übergang) */}
+<header className="w-full p-5 bg-(--accent) shadow-2xl relative transition-colors duration-700 ease-in-out">
 <div className="flex items-center justify-between relative z-10">
 <div className="flex items-center space-x-3">
 {/* EINGEBETTETES, STABILES LOGO (Lucide-Icons) */}
@@ -1276,15 +1310,14 @@ onClose={() => setShowAdmin(false)}
 key={trade.name}
 name={trade.name}
 icon={trade.icon}
-color={trade.color}
-hoverClass={trade.hover}
+theme={TRADE_THEMES[trade.name]}
 isSelected={selectedTrade === trade.name}
 onClick={saveTradePreference} // Speichert direkt in Firestore
 />
 ))}
 </div>
 {selectedTrade && (
-<p className="mt-3 text-sm text-gray-600 font-medium">Aktuelles Gewerk: <span className="text-blue-600 font-bold">{selectedTrade}</span></p>
+<p className="mt-3 text-sm text-gray-600 font-medium transition-colors duration-500 ease-in-out">Aktuelles Gewerk: <span className="text-(--accent) font-bold">{selectedTrade}</span></p>
 )}
 </section>
 {/* 2. Problem dokumentieren & analysieren - ANPASSUNG AN BILDSTIL */}
@@ -1298,14 +1331,14 @@ onClick={saveTradePreference} // Speichert direkt in Firestore
     Kamera-App statt einer Dateiauswahl, damit die Analyse live auf der
     Baustelle passiert. Auf dem Desktop ohne Kamera fällt der Browser
     automatisch auf eine normale Dateiauswahl zurück. */}
-<label htmlFor="camera-input" className="flex items-center space-x-1 cursor-pointer hover:text-red-600 transition">
-<Camera className="w-5 h-5 text-red-600" />
+<label htmlFor="camera-input" className="flex items-center space-x-1 cursor-pointer hover:text-(--accent) transition-colors duration-500 ease-in-out">
+<Camera className="w-5 h-5 text-(--accent) transition-colors duration-500 ease-in-out" />
 <span>Foto aufnehmen</span>
 <input id="camera-input" type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
 </label>
 {/* Galerie: bewusst ohne "capture", damit auch ein bereits vorhandenes Foto ausgewählt werden kann */}
-<label htmlFor="gallery-input" className="flex items-center space-x-1 cursor-pointer hover:text-red-600 transition">
-<Image className="w-5 h-5 text-red-600" />
+<label htmlFor="gallery-input" className="flex items-center space-x-1 cursor-pointer hover:text-(--accent) transition-colors duration-500 ease-in-out">
+<Image className="w-5 h-5 text-(--accent) transition-colors duration-500 ease-in-out" />
 <span>Galerie</span>
 <input id="gallery-input" type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
 </label>

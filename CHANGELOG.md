@@ -8,6 +8,22 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.13.0] – 2026-08-11
+
+### Hinzugefügt
+- **Farbthema folgt dem gewählten Gewerk.** Header, Haupt-Buttons und
+  Akzent-Icons/-Texte übernehmen jetzt eine gedeckte, ruhige Akzentfarbe je
+  Gewerk (`TRADE_THEMES` in `src/App.jsx`) statt eines fest codierten Rot als
+  Marken-/Warnfarbe zugleich — echte Warn-/Fehlerhinweise (z.B. der EU-AI-Act-
+  Disclaimer) bleiben bewusst rot, damit sie als Warnung erkennbar bleiben.
+  Technisch über CSS-Custom-Properties (`--accent`, `--accent-dark`,
+  `--accent-soft`) gelöst, die am äußeren Container gesetzt und per
+  `transition-colors duration-500/700` weich (nicht schlagartig) eingeblendet
+  werden, sobald ein anderes Gewerk gewählt wird. Die fest zugeordneten
+  Mehrfarben-Buttons der KI-Zusatztools (Material/Sicherheit/Video/
+  Kundenbericht) sind bewusst unverändert geblieben, da sie einzelne Features
+  statt der App-Marke kennzeichnen.
+
 ## [1.12.0] – 2026-08-11
 
 ### Hinzugefügt
