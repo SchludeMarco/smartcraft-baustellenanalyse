@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { Lock, Bug, Mail, X, Loader2, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
-import { fetchAllErrorReports, getErrorContextInfo } from './errorReporting';
+import { Lock, Bug, Mail, X, Loader2, ChevronDown, ChevronUp, RefreshCw, CheckCircle2, RotateCcw } from 'lucide-react';
+import { fetchAllErrorReports, fetchResolvedContexts, setContextResolved, getErrorContextInfo } from './errorReporting';
 
 const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN;
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'marco.schlude@gmail.com';
@@ -40,14 +40,17 @@ const buildMailto = (report) => {
 // Admin-Bereich: PIN-geschützte Übersicht aller Fehlerreports (Collection-Group-Query
 // über alle Nutzer, siehe fetchAllErrorReports). Der PIN ist reiner UI-Sichtschutz,
 // keine echte Zugriffskontrolle (siehe Kommentar in firestore.rules).
-const AdminPanel = ({ db, onClose }) => {
+const AdminPanel = ({ db, appId, onClose }) => {
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   const [reports, setReports] = useState([]);
+  const [resolvedContexts, setResolvedContexts] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
+  const [hideResolved, setHideResolved] = useState(true);
+  const [togglingContext, setTogglingContext] = useState(null);
 
   const loadReports = useCallback(async () => {
     if (!db) {
@@ -57,15 +60,33 @@ const AdminPanel = ({ db, onClose }) => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const data = await fetchAllErrorReports(db);
+      const [data, resolved] = await Promise.all([
+        fetchAllErrorReports(db),
+        fetchResolvedContexts(db, appId),
+      ]);
       setReports(data);
+      setResolvedContexts(resolved);
     } catch (e) {
       console.error('Fehler beim Laden der Fehlerreports:', e);
       setLoadError('Fehler beim Laden: ' + e.message);
     } finally {
       setIsLoading(false);
     }
-  }, [db]);
+  }, [db, appId]);
+
+  const toggleResolved = async (context, resolved) => {
+    setTogglingContext(context);
+    try {
+      const updated = await setContextResolved(db, appId, context, resolved, {
+        resolvedInVersion: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : null,
+      });
+      setResolvedContexts(updated);
+    } catch (e) {
+      console.error('Fehler beim Aktualisieren des Status:', e);
+    } finally {
+      setTogglingContext(null);
+    }
+  };
 
   const handleUnlock = (e) => {
     e.preventDefault();
@@ -113,13 +134,22 @@ const AdminPanel = ({ db, onClose }) => {
           </form>
         ) : (
           <>
-            <div className="flex justify-between items-center mb-3 flex-shrink-0">
+            <div className="flex justify-between items-center mb-1 flex-shrink-0">
               <p className="text-xs text-gray-500">{reports.length} Report{reports.length === 1 ? '' : 's'} insgesamt</p>
               <button onClick={loadReports} disabled={isLoading} className="flex items-center text-xs text-blue-600 hover:text-blue-800 font-semibold">
                 <RefreshCw className={`w-3 h-3 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
                 Aktualisieren
               </button>
             </div>
+            <label className="flex items-center mb-3 flex-shrink-0 text-xs text-gray-600 select-none">
+              <input
+                type="checkbox"
+                checked={hideResolved}
+                onChange={(e) => setHideResolved(e.target.checked)}
+                className="mr-1.5"
+              />
+              Gelöste ausblenden
+            </label>
             {isLoading ? (
               <div className="flex items-center justify-center flex-grow">
                 <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
@@ -130,19 +160,41 @@ const AdminPanel = ({ db, onClose }) => {
               <div className="text-center p-8 text-gray-500 flex-grow">
                 <p>Keine Fehlerreports vorhanden.</p>
               </div>
-            ) : (
+            ) : (() => {
+              const visibleReports = hideResolved
+                ? reports.filter((r) => !resolvedContexts[r.context])
+                : reports;
+              return visibleReports.length === 0 ? (
+                <div className="text-center p-8 text-gray-500 flex-grow">
+                  <p>Keine offenen Fehlerreports. Alle Fehlerbilder sind als gelöst markiert.</p>
+                </div>
+              ) : (
               <ul className="space-y-3 overflow-y-auto flex-grow pr-1">
-                {reports.map((report) => {
+                {visibleReports.map((report) => {
                   const info = getErrorContextInfo(report.context);
                   const isExpanded = expandedId === report.id;
+                  const resolution = resolvedContexts[report.context];
+                  const isResolved = !!resolution;
                   return (
-                    <li key={report.id} className="border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                    <li key={report.id} className={`border rounded-lg shadow-sm overflow-hidden ${isResolved ? 'border-green-200 opacity-70' : 'border-gray-200'}`}>
                       <button
                         onClick={() => setExpandedId(isExpanded ? null : report.id)}
                         className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 transition flex items-start justify-between"
                       >
                         <div className="flex-grow pr-2">
-                          <p className="text-xs text-gray-500">{formatTimestamp(report.timestamp)}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-gray-500">{formatTimestamp(report.timestamp)}</p>
+                            {isResolved && (
+                              <span className="inline-flex items-center text-[10px] font-semibold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">
+                                <CheckCircle2 className="w-3 h-3 mr-0.5" /> Gelöst
+                              </span>
+                            )}
+                            {report.reportedBy?.isAnonymous === false && (
+                              <span className="inline-flex items-center text-[10px] font-semibold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-full" title={report.reportedBy.email || ''}>
+                                {report.reportedBy.displayName || report.reportedBy.email || 'Angemeldet'}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm font-semibold text-gray-800">{info.label}</p>
                           <p className="text-xs text-gray-600 mt-0.5 break-words line-clamp-2">{report.message}</p>
                         </div>
@@ -151,9 +203,21 @@ const AdminPanel = ({ db, onClose }) => {
                       {isExpanded && (
                         <div className="p-3 bg-white border-t border-gray-200 space-y-2 text-xs text-gray-700">
                           <p><strong>Kontext:</strong> {report.context}</p>
+                          <p>
+                            <strong>Gemeldet von:</strong>{' '}
+                            {report.reportedBy?.isAnonymous === false
+                              ? `${report.reportedBy.displayName || 'Unbekannter Name'}${report.reportedBy.email ? ` (${report.reportedBy.email})` : ''}`
+                              : 'Anonym'}
+                          </p>
                           <p><strong>Nutzer-Pfad:</strong> <span className="break-all">{report.path}</span></p>
                           <p><strong>App-Version:</strong> {report.appVersion || 'unbekannt'}</p>
                           <p><strong>User-Agent:</strong> <span className="break-all">{report.userAgent || 'unbekannt'}</span></p>
+                          {isResolved && (
+                            <p className="text-green-700">
+                              <strong>Gelöst seit:</strong> {formatTimestamp(resolution.resolvedAt)}
+                              {resolution.resolvedInVersion ? ` (V${resolution.resolvedInVersion})` : ''}
+                            </p>
+                          )}
                           <div className="p-2 bg-red-50 border-l-4 border-red-400 rounded">
                             <p className="font-bold text-red-700 mb-1">Fehlermeldung (ausgeschrieben):</p>
                             <p className="break-words whitespace-pre-wrap">{report.message}</p>
@@ -170,6 +234,24 @@ const AdminPanel = ({ db, onClose }) => {
                             <p className="font-bold text-blue-700 mt-2 mb-1">Lösungsansatz:</p>
                             <p>{info.fix}</p>
                           </div>
+                          <button
+                            onClick={() => toggleResolved(report.context, !isResolved)}
+                            disabled={togglingContext === report.context}
+                            className={`mt-2 w-full flex items-center justify-center px-4 py-2 font-semibold rounded-xl transition text-sm ${
+                              isResolved
+                                ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                : 'bg-green-600 text-white hover:bg-green-700'
+                            }`}
+                          >
+                            {togglingContext === report.context ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : isResolved ? (
+                              <RotateCcw className="w-4 h-4 mr-2" />
+                            ) : (
+                              <CheckCircle2 className="w-4 h-4 mr-2" />
+                            )}
+                            {isResolved ? 'Wieder als offen markieren' : 'Als gelöst markieren (ganzer Kontext)'}
+                          </button>
                           <a
                             href={buildMailto(report)}
                             className="mt-2 flex items-center justify-center px-4 py-2 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition text-sm"
@@ -183,7 +265,8 @@ const AdminPanel = ({ db, onClose }) => {
                   );
                 })}
               </ul>
-            )}
+              );
+            })()}
           </>
         )}
       </div>

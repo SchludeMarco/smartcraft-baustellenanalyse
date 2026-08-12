@@ -1,4 +1,4 @@
-import { collection, collectionGroup, doc, setDoc, getDocs, serverTimestamp } from 'firebase/firestore';
+import { collection, collectionGroup, doc, setDoc, getDoc, getDocs, serverTimestamp } from 'firebase/firestore';
 import { getToken as getAppCheckToken } from 'firebase/app-check';
 import { ERROR_CONTEXT_INFO, getErrorContextInfo } from './errorContextInfo';
 
@@ -81,8 +81,11 @@ export const queueErrorReport = (context, error) => {
  * Versucht alle lokal wartenden Fehlerreports unter dem privaten Nutzerpfad
  * in Firestore abzulegen. Reports, die (erneut) fehlschlagen, bleiben in der
  * Warteschlange und werden beim nächsten Versuch erneut probiert.
+ * `reporterInfo` ({ displayName, email, isAnonymous }) wird mitgespeichert,
+ * damit der Admin-Bereich Reports einer echten Google-Identität statt nur
+ * einer anonymen UID zuordnen kann (siehe AdminPanel.jsx).
  */
-export const flushErrorReports = async (db, userId, appId) => {
+export const flushErrorReports = async (db, userId, appId, reporterInfo = null) => {
   if (!db || !userId || (typeof navigator !== 'undefined' && !navigator.onLine)) return;
   const queue = readQueue();
   if (queue.length === 0) return;
@@ -90,7 +93,7 @@ export const flushErrorReports = async (db, userId, appId) => {
   for (const report of queue) {
     try {
       const reportsCol = collection(db, 'artifacts', appId, 'users', userId, 'errorReports');
-      await setDoc(doc(reportsCol), { ...report, sentAt: serverTimestamp() });
+      await setDoc(doc(reportsCol), { ...report, reportedBy: reporterInfo, sentAt: serverTimestamp() });
     } catch (e) {
       remaining.push(report);
     }
@@ -112,6 +115,37 @@ export const fetchAllErrorReports = async (db) => {
   });
   reports.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
   return reports;
+};
+
+const RESOLUTIONS_DOC = (db, appId) => doc(db, 'artifacts', appId, 'adminMeta', 'errorResolutions');
+
+/**
+ * Liest, welche Fehlerkontexte (Schlüssel aus ERROR_CONTEXT_INFO) im Admin-
+ * Bereich als "gelöst" markiert wurden. Ein Kontext ist bewusst die Einheit
+ * (nicht der einzelne Report) — siehe error_log.md, das dieselbe Granularität
+ * verwendet.
+ */
+export const fetchResolvedContexts = async (db, appId) => {
+  const snap = await getDoc(RESOLUTIONS_DOC(db, appId));
+  return snap.exists() ? (snap.data().resolvedContexts || {}) : {};
+};
+
+/**
+ * Markiert einen Fehlerkontext im Admin-Bereich als gelöst/wieder offen.
+ * `resolved = false` entfernt den Eintrag statt ihn nur zu leeren, damit
+ * `resolvedContexts` nicht mit toten Einträgen zuwächst.
+ */
+export const setContextResolved = async (db, appId, context, resolved, meta = {}) => {
+  const ref = RESOLUTIONS_DOC(db, appId);
+  const snap = await getDoc(ref);
+  const current = snap.exists() ? (snap.data().resolvedContexts || {}) : {};
+  if (resolved) {
+    current[context] = { resolvedAt: Date.now(), ...meta };
+  } else {
+    delete current[context];
+  }
+  await setDoc(ref, { resolvedContexts: current }, { merge: true });
+  return current;
 };
 
 // Re-export für bestehende Importe (z.B. src/AdminPanel.jsx) — Inhalt liegt in

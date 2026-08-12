@@ -8,6 +8,34 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.15.0] – 2026-08-12
+
+### Hinzugefügt
+- **Optionales Google-Sign-In.** Bisher meldete sich jeder Nutzer ausschließlich
+  anonym an (Firebase Anonymous Auth) — der Verlauf war an das jeweilige Gerät
+  gebunden und es gab keine echte Identität, an der sich z.B. auffällige oder
+  bösartige Nutzung festmachen ließe. Neuer Button "Mit Google anmelden" im
+  Profil-Menü (`App.jsx`) verknüpft die bestehende anonyme Sitzung per Firebase
+  Account-Linking (`linkWithPopup`) mit einem Google-Konto — gleiche UID, Verlauf
+  bleibt erhalten, das Konto ist danach geräteübergreifend nutzbar. Ist das
+  Google-Konto bereits an anderer Stelle verknüpft, fällt der Login auf
+  `signInWithPopup` zurück (Hinweis: die alte anonyme Historie geht dabei
+  verloren). Fehlerreports (`errorReporting.js`) speichern jetzt zusätzlich
+  `reportedBy` (Name/E-Mail, falls per Google angemeldet), damit der
+  PIN-geschützte Admin-Bereich (`AdminPanel.jsx`) Reports einer echten Person
+  statt nur einer anonymen UID zuordnen kann — Voraussetzung, um Missbrauch
+  gezielter nachzuverfolgen. Erfordert einmalig den Provider **Google** in der
+  Firebase Console unter Authentication → Sign-in method (siehe README).
+- **Echter "Gelöst"-Status im Admin-Bereich.** V1.14.1 hatte diese Lücke noch
+  offen benannt ("es gibt in Firestore keinen 'gelöst'-Status"): `AdminPanel.jsx`
+  zeigte jeden Fehlerreport dauerhaft an, auch längst behobene. Jetzt lässt sich
+  pro Fehlerkontext direkt im Admin-Bereich "Als gelöst markieren" umschalten
+  (`setContextResolved`/`fetchResolvedContexts` in `errorReporting.js`),
+  gespeichert unter `artifacts/{appId}/adminMeta/errorResolutions` (neue
+  Firestore-Regel dafür in `firestore.rules`). Standardmäßig blendet eine
+  Checkbox gelöste Fehlerbilder aus der Liste aus; jeder Report zeigt zusätzlich
+  ein "Gelöst seit"-Datum samt App-Version an.
+
 ## [1.14.1] – 2026-08-12
 
 ### Hinzugefügt

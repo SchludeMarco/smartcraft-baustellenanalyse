@@ -14,5 +14,12 @@ service cloud.firestore {
     match /{path=**}/errorReports/{reportId} {
       allow read: if request.auth != null;
     }
+
+    // Admin-Bereich: merkt sich pro Fehlerkontext (siehe errorContextInfo.js), ob er
+    // als "gelöst" markiert wurde (AdminPanel.jsx-Badge/Filter). Gleicher Sichtschutz
+    // wie oben bei errorReports — kein echter Zugriffsschutz, nur PIN-gated UI.
+    match /artifacts/{appId}/adminMeta/{document=**} {
+      allow read, write: if request.auth != null;
+    }
   }
 }

@@ -97,7 +97,8 @@ App eine Einschätzung, keine Freigabe.
 
 ## Tech-Stack
 
-React 18 + Vite, Tailwind CSS (CDN), Firebase (Anonymous Auth + Firestore),
+React 18 + Vite, Tailwind CSS (CDN), Firebase (Anonymous Auth + optionales
+Google-Sign-In + Firestore),
 Google Gemini API (`gemini-flash-latest`) über eine Vercel Serverless Function als
 Proxy — der API-Key bleibt dadurch server-seitig und wird nie im Browser sichtbar.
 
@@ -119,7 +120,19 @@ reicht `npm run dev`, für die volle KI-Funktion lokal: `vercel dev`.
 Firestore wurde im Produktionsmodus angelegt (alles standardmäßig gesperrt).
 Die Regeln aus [`firestore.rules`](./firestore.rules) müssen einmalig in der
 Firebase Console unter **Firestore Database → Regeln** eingetragen werden.
-Sie beschränken Lese-/Schreibzugriff auf den jeweils eigenen anonymen Nutzer.
+Sie beschränken Lese-/Schreibzugriff auf den jeweils eigenen Nutzer (egal ob
+anonym oder per Google angemeldet — die UID bleibt beim Google-Sign-In-Upgrade
+über Account-Linking gleich).
+
+## Google-Sign-In aktivieren
+
+Nutzer starten weiterhin sofort mit einer anonymen Sitzung (siehe unten) und
+können sie im Profil-Menü optional per "Mit Google anmelden" zu einem echten,
+geräteübergreifenden Konto machen (Firebase Account-Linking, gleiche UID,
+Verlauf bleibt erhalten). Damit das funktioniert, einmalig in der Firebase
+Console unter **Authentication → Sign-in method** den Provider **Google**
+aktivieren. Kein zusätzlicher Env-Var nötig — läuft über die bestehenden
+`VITE_FIREBASE_*`-Werte.
 
 ## Deployment (Vercel)
 
@@ -145,10 +158,10 @@ Environment Variables in den Vercel-Projekteinstellungen:
   deaktiviert — im Original fehlte die API-Berechtigung dafür. Naheliegende
   Erweiterung: Diagnose auf der Baustelle vorlesen lassen, wenn beide Hände beschäftigt
   sind.
-- **Anonyme Sitzungen statt Konto:** aktuell meldet sich jeder Nutzer anonym an
-  (Firebase Anonymous Auth) — der Verlauf ist an das jeweilige Gerät gebunden. Für eine
-  spätere Android-App wäre echtes Google-Sign-In der nächste Schritt, um ein
-  dauerhaftes, geräteübergreifendes Konto zu ermöglichen.
+- **Google-Sign-In ist optional, nicht Pflicht:** jeder Nutzer startet weiterhin
+  sofort anonym (keine Hürde vor der ersten Nutzung) und kann die Sitzung im
+  Profil-Menü freiwillig per Google-Konto "aufwerten". Wer das nicht tut, bleibt
+  geräteweise anonym wie bisher — für die geplante Android-App reicht das bereits.
 - **Gewerke-Sondereditionen & dedizierter Privat-Modus** sind als nächste große
   Ausbaustufe geplant: eigene Editionen pro Gewerk (z.B. Sm@rtCraft Elektro,
   Sm@rtCraft Garten) sowie eine eigene "Sm@rtCraft Zuhause"-Variante mit spürbar

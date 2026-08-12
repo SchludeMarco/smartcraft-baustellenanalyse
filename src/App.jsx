@@ -7,7 +7,8 @@ VolumeX, List, X, Lock
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import {
-getAuth, signInAnonymously, onAuthStateChanged, signOut
+getAuth, signInAnonymously, onAuthStateChanged, signOut,
+GoogleAuthProvider, signInWithPopup, linkWithPopup
 } from 'firebase/auth';
 import {
 initializeAppCheck, ReCaptchaV3Provider, getToken as getAppCheckToken
@@ -242,6 +243,16 @@ Laden
 );
 };
 // ** ZURÜCKGESETZTE/VEREINFACHTE SVG-KOMPONENTE MIT LUCIDE-ICONS **
+// Offizielles Google "G"-Logo (mehrfarbig) für den "Mit Google anmelden"-Button —
+// gibt es nicht als lucide-react-Icon, daher als eigenes Inline-SVG.
+const GoogleIcon = ({ className }) => (
+<svg className={className} viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
+<path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" />
+<path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
+<path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" />
+</svg>
+);
 const SmarterCraftLogo = () => (
 <div className="relative w-10 h-10">
 {/* Basis: Hammer */}
@@ -255,6 +266,9 @@ const App = () => {
 const [db, setDb] = useState(null);
 const [auth, setAuth] = useState(null);
 const [userId, setUserId] = useState(null);
+// Voller Auth-User (Firebase User-Objekt): liefert isAnonymous/displayName/
+// email/photoURL für Profil-UI und Fehlerreport-Zuordnung (Google-Login).
+const [authUser, setAuthUser] = useState(null);
 const [isAuthReady, setIsAuthReady] = useState(false);
 const [showAuth, setShowAuth] = useState(false);
 const [showHistory, setShowHistory] = useState(false); // Steuert das Historien-Modal
@@ -344,9 +358,11 @@ setError("Kritischer Fehler: Die App konnte keine anonyme Sitzung starten. Histo
 const unsubscribe = onAuthStateChanged(authInstance, (user) => {
 if (user && user.uid) {
 setUserId(user.uid);
+setAuthUser(user);
 setShowAuth(false);
 } else {
 setUserId(null);
+setAuthUser(null);
 setShowAuth(false);
 }
 setIsAuthReady(true);
@@ -358,11 +374,19 @@ return () => unsubscribe();
 // Firestore-Verbindung besteht (initial + bei Wiederherstellung der Internetverbindung) ---
 useEffect(() => {
 if (!db || !userId) return;
-flushErrorReports(db, userId, appId);
-const handleOnline = () => flushErrorReports(db, userId, appId);
+// Identität des meldenden Nutzers (falls per Google angemeldet) wird am Report
+// mitgespeichert, damit der Admin-Bereich verdächtige/gehäufte Reports einer
+// echten Person statt nur einer anonymen UID zuordnen kann.
+const reporterInfo = {
+displayName: authUser?.displayName || null,
+email: authUser?.email || null,
+isAnonymous: authUser?.isAnonymous ?? true,
+};
+flushErrorReports(db, userId, appId, reporterInfo);
+const handleOnline = () => flushErrorReports(db, userId, appId, reporterInfo);
 window.addEventListener('online', handleOnline);
 return () => window.removeEventListener('online', handleOnline);
-}, [db, userId]);
+}, [db, userId, authUser]);
 // --- FUNKTION: ALLES ZURÜCKSETZEN ---
 const handleReset = useCallback(() => {
 setSelectedImageBase64(null);
@@ -1153,16 +1177,56 @@ Um die Analyse zu starten, benötigen Sie **eines** der folgenden Elemente:
 // Profil-Modal-Komponente (angepasst an Rot/Blau)
 const UserProfileModal = () => {
 const [showProfile, setShowProfile] = useState(false);
+const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
+const isGoogleUser = authUser?.isAnonymous === false;
 const handleSignOut = async () => {
 // Nur Abmeldung, wenn Firebase aktiv ist
 if (!auth || !userId) return;
 try {
-// Meldet den aktuellen Benutzer ab
+// Meldet den aktuellen Benutzer ab und startet direkt wieder eine anonyme
+// Gast-Sitzung, damit die App (Historie, Fehlerreports) ohne Reload nutzbar bleibt.
 await signOut(auth);
+await signInAnonymously(auth);
 setShowProfile(false);
 handleReset(); // App zurücksetzen
 } catch (e) {
 console.error("Logout Error:", e);
+queueErrorReport('firebase-auth', e);
+}
+};
+// Verknüpft die bestehende anonyme Sitzung (samt Historie) per Firebase
+// Account-Linking mit einem Google-Konto, statt sie zu ersetzen — der
+// Verlauf bleibt unter derselben UID erhalten. Ist bereits ein "echtes"
+// Konto aktiv, meldet sich der Nutzer stattdessen direkt per Google an.
+const handleGoogleSignIn = async () => {
+if (!auth) return;
+setIsGoogleSigningIn(true);
+const provider = new GoogleAuthProvider();
+try {
+if (auth.currentUser?.isAnonymous) {
+await linkWithPopup(auth.currentUser, provider);
+} else {
+await signInWithPopup(auth, provider);
+}
+setShowProfile(false);
+} catch (e) {
+if (e.code === 'auth/credential-already-in-use') {
+// Das Google-Konto ist bereits mit einem anderen (echten) Nutzer
+// verknüpft: dort stattdessen anmelden. Die bisherige anonyme Sitzung
+// samt ihrer lokalen Historie geht dabei verloren.
+try {
+await signInWithPopup(auth, provider);
+setShowProfile(false);
+} catch (e2) {
+console.error('Google-Anmeldung fehlgeschlagen:', e2);
+queueErrorReport('google-signin', e2);
+}
+} else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+console.error('Google-Anmeldung fehlgeschlagen:', e);
+queueErrorReport('google-signin', e);
+}
+} finally {
+setIsGoogleSigningIn(false);
 }
 };
 return (
@@ -1170,11 +1234,15 @@ return (
 {/* Profil-Button im Header */}
 <button
 onClick={() => setShowProfile(true)} // Öffnet Profil-Modal
-className={`p-2 rounded-full transition duration-200 ${userId ? 'bg-white/20 hover:bg-white/30' : 'bg-gray-500/50 cursor-wait'}`}
+className={`p-2 rounded-full transition duration-200 overflow-hidden ${userId ? 'bg-white/20 hover:bg-white/30' : 'bg-gray-500/50 cursor-wait'}`}
 disabled={!userId}
 title="Benutzerprofil und Historie anzeigen"
 >
+{authUser?.photoURL ? (
+<img src={authUser.photoURL} alt="" className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" />
+) : (
 <User className="w-6 h-6 text-white" />
+)}
 </button>
 {/* Profil Modal */}
 {showProfile && (
@@ -1187,18 +1255,46 @@ onClick={e => e.stopPropagation()}
 <h3 className="text-xl font-bold text-gray-800 flex items-center">
 {/* Profil-Icon folgt der Gewerk-Akzentfarbe */}
 <User className="w-5 h-5 mr-2 text-(--accent) transition-colors duration-500 ease-in-out" />
-Anonyme Sitzung
+{isGoogleUser ? 'Mein Konto' : 'Anonyme Sitzung'}
 </h3>
 <button onClick={() => setShowProfile(false)} className="text-gray-400 hover:text-gray-600 text-2xl font-light"><X className="w-6 h-6" /></button>
 </div>
-<p className="text-sm text-gray-600 mb-4 break-words p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+{isGoogleUser ? (
+<div className="flex items-center space-x-3 mb-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
+{authUser.photoURL ? (
+<img src={authUser.photoURL} alt="" className="w-10 h-10 rounded-full flex-shrink-0" referrerPolicy="no-referrer" />
+) : (
+<User className="w-10 h-10 p-2 bg-gray-200 rounded-full text-gray-500 flex-shrink-0" />
+)}
+<div className="min-w-0">
+<p className="text-sm font-semibold text-gray-800 truncate">{authUser.displayName || 'Google-Konto'}</p>
+<p className="text-xs text-gray-500 truncate">{authUser.email}</p>
+</div>
+</div>
+) : (
+<>
+<p className="text-sm text-gray-600 mb-3 break-words p-2 bg-yellow-50 rounded-lg border border-yellow-200">
 <strong className="block text-xs uppercase text-yellow-700 mb-1">Hinweis zur Historie:</strong>
-<span className="font-semibold text-gray-700 break-words">Sie sind anonym angemeldet. Beim späteren Ausrollen als Android App können Sie dies durch <span className='font-bold text-(--accent) transition-colors duration-500 ease-in-out'>Google Sign-In</span> ersetzen, um ein dauerhaftes Konto zu erhalten.</span>
+<span className="font-semibold text-gray-700 break-words">Sie sind anonym angemeldet. Die Historie ist an dieses Gerät gebunden und geht z.B. bei Cache-Löschung verloren.</span>
 </p>
+<button
+onClick={handleGoogleSignIn}
+disabled={isGoogleSigningIn}
+className="w-full flex items-center justify-center px-4 py-2 bg-white border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition duration-300 text-sm mb-3 transform active:scale-[0.98] disabled:opacity-60"
+>
+{isGoogleSigningIn ? (
+<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+) : (
+<GoogleIcon className="w-4 h-4 mr-2" />
+)}
+Mit Google anmelden
+</button>
 <p className="text-sm text-gray-600 mb-4 break-words">
 <strong className="block text-xs uppercase text-gray-500 mb-1">Temporäre ID:</strong>
 <span className="font-semibold text-blue-600 break-words">{userId || 'Wird geladen...'}</span>
 </p>
+</>
+)}
 <div className="flex justify-between space-x-2 mt-6">
 <button
 onClick={() => { setShowHistory(true); setShowProfile(false); }}
@@ -1210,11 +1306,11 @@ Historie
 </button>
 <button
 onClick={handleSignOut}
-// Rot, um auf den Verlust der Historie hinzuweisen
+// Rot, um auf den Verlust der (Google-)Anmeldung bzw. anonymen Historie hinzuweisen
 className="flex items-center px-4 py-2 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition duration-300 text-sm transform active:scale-[0.98]"
 >
 <X className="w-4 h-4 mr-2" />
-Sitzung beenden
+{isGoogleUser ? 'Abmelden' : 'Sitzung beenden'}
 </button>
 </div>
 <button
@@ -1275,6 +1371,7 @@ onSelect={handleSelectAnalysis}
 {showAdmin && (
 <AdminPanel
 db={db}
+appId={appId}
 onClose={() => setShowAdmin(false)}
 />
 )}
