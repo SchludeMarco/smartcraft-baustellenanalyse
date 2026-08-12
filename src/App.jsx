@@ -1178,7 +1178,26 @@ Um die Analyse zu starten, benötigen Sie **eines** der folgenden Elemente:
 const UserProfileModal = () => {
 const [showProfile, setShowProfile] = useState(false);
 const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
+const [googleSignInError, setGoogleSignInError] = useState(null);
 const isGoogleUser = authUser?.isAnonymous === false;
+// Menschenlesbare Meldung je bekanntem Firebase-Auth-Fehlercode. Ohne das
+// blieb ein fehlgeschlagener Google-Login für den Nutzer unsichtbar (nur
+// console.error) — sah aus wie "kurzer schwarzer Screen, dann nichts".
+const describeGoogleSignInError = (e) => {
+switch (e.code) {
+case 'auth/unauthorized-domain':
+return 'Diese Domain ist in Firebase nicht für Google-Login freigeschaltet (Authentication → Settings → Authorized domains).';
+case 'auth/popup-blocked':
+return 'Der Browser hat das Login-Popup blockiert. Bitte Popups für diese Seite erlauben und erneut versuchen.';
+case 'auth/network-request-failed':
+return 'Netzwerkfehler bei der Google-Anmeldung. Bitte Internetverbindung prüfen und erneut versuchen.';
+case 'auth/popup-closed-by-user':
+case 'auth/cancelled-popup-request':
+return 'Das Login-Fenster wurde vorzeitig geschlossen, bevor die Anmeldung abgeschlossen war. Bitte erneut versuchen.';
+default:
+return `Google-Anmeldung fehlgeschlagen (${e.code || e.message}).`;
+}
+};
 const handleSignOut = async () => {
 // Nur Abmeldung, wenn Firebase aktiv ist
 if (!auth || !userId) return;
@@ -1201,6 +1220,7 @@ queueErrorReport('firebase-auth', e);
 const handleGoogleSignIn = async () => {
 if (!auth) return;
 setIsGoogleSigningIn(true);
+setGoogleSignInError(null);
 const provider = new GoogleAuthProvider();
 try {
 if (auth.currentUser?.isAnonymous) {
@@ -1219,11 +1239,18 @@ await signInWithPopup(auth, provider);
 setShowProfile(false);
 } catch (e2) {
 console.error('Google-Anmeldung fehlgeschlagen:', e2);
+setGoogleSignInError(describeGoogleSignInError(e2));
 queueErrorReport('google-signin', e2);
 }
-} else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+} else {
 console.error('Google-Anmeldung fehlgeschlagen:', e);
+setGoogleSignInError(describeGoogleSignInError(e));
+// Bei bloßem Nutzer-Abbruch (Popup selbst geschlossen) keinen Report
+// erzeugen — alle anderen Fehler (z.B. nicht freigeschaltete Domain)
+// landen im Admin-Bereich, damit sie nicht mehr lautlos untergehen.
+if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
 queueErrorReport('google-signin', e);
+}
 }
 } finally {
 setIsGoogleSigningIn(false);
@@ -1289,6 +1316,11 @@ className="w-full flex items-center justify-center px-4 py-2 bg-white border bor
 )}
 Mit Google anmelden
 </button>
+{googleSignInError && (
+<p className="text-xs text-red-700 mb-3 break-words p-2 bg-red-50 rounded-lg border border-red-200">
+{googleSignInError}
+</p>
+)}
 <p className="text-sm text-gray-600 mb-4 break-words">
 <strong className="block text-xs uppercase text-gray-500 mb-1">Temporäre ID:</strong>
 <span className="font-semibold text-blue-600 break-words">{userId || 'Wird geladen...'}</span>

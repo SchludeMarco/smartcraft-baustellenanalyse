@@ -8,6 +8,20 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.15.2] – 2026-08-12
+
+### Behoben
+- **Fehlgeschlagener Google-Login war für Nutzer unsichtbar.** Schlug
+  `linkWithPopup`/`signInWithPopup` fehl (z.B. weil die aufrufende Domain
+  nicht unter Firebase Authentication → Settings → Authorized domains
+  freigeschaltet ist — Google-Login aktivieren allein reicht dafür nicht),
+  gab es nur ein `console.error`, keine sichtbare Rückmeldung: ein kurzer
+  schwarzer Screen (Popup öffnet, schließt sofort wieder) und danach schien
+  nichts mehr zu passieren. `handleGoogleSignIn` (`App.jsx`) zeigt jetzt bei
+  jedem Fehlschlag eine passende Meldung im Profil-Modal an (u.a. eigene
+  Texte für `auth/unauthorized-domain`, `auth/popup-blocked`,
+  `auth/network-request-failed`).
+
 ## [1.15.1] – 2026-08-12
 
 ### Behoben
