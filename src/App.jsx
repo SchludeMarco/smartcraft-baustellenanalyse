@@ -294,6 +294,7 @@ const [isAuthReady, setIsAuthReady] = useState(false);
 const [showAuth, setShowAuth] = useState(false);
 const [showHistory, setShowHistory] = useState(false); // Steuert das Historien-Modal
 const [showAdmin, setShowAdmin] = useState(false); // Steuert das Admin-Modal (Fehlerreports)
+const [showDisclaimer, setShowDisclaimer] = useState(true); // EU-AI-Act-Haftungsausschluss wegklickbar (pro Sitzung)
 // --- App States ---
 const [selectedImageBase64, setSelectedImageBase64] = useState(null);
 const [problemDescription, setProblemDescription] = useState('');
@@ -1457,13 +1458,22 @@ onClose={() => setShowAdmin(false)}
 {/* Haupt-Content-Bereich */}
 <main className="p-4 space-y-6 w-full bg-white/95 backdrop-blur-md shadow-2xl overflow-y-auto">
 {/* EU AI ACT DISCLAIMER */}
+{showDisclaimer && (
 <div className="p-3 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-lg shadow-md flex items-start space-x-3">
 <AlertTriangle className="w-5 h-5 mt-1 flex-shrink-0 text-red-600" />
-<div>
+<div className="flex-grow">
 <p className="font-bold">WICHTIGER HAFTUNGSAUSSCHLUSS (EU AI ACT)</p>
 <p className="text-xs">Die KI-Diagnose ist ein unterstützender Vorschlag und ersetzt keine professionelle Planung oder statische Bewertung. Führen Sie sicherheitsrelevante Arbeiten nur nach Prüfung durch einen zertifizierten Fachmann aus.</p>
 </div>
+<button
+onClick={() => setShowDisclaimer(false)}
+className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-red-600 text-white hover:bg-red-700 transition"
+title="Hinweis ausblenden"
+>
+<X className="w-4 h-4" />
+</button>
 </div>
+)}
 {/* 1. Gewerk Auswahl */}
 <section>
 <h2 className="text-lg font-bold text-gray-700 mb-3 border-b pb-2">1. Gewerk auswählen</h2>

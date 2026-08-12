@@ -8,6 +8,15 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.16.0] – 2026-08-12
+
+### Hinzugefügt
+- **EU-AI-Act-Haftungsausschluss wegklickbar.** Der rote Hinweisblock oben im
+  Hauptbereich (`App.jsx`) ließ sich bisher nicht ausblenden. Neuer runder
+  roter Button mit X-Icon oben rechts in der Box blendet ihn aus (State
+  `showDisclaimer`, gilt nur für die aktuelle Sitzung — nach einem Reload
+  erscheint der Hinweis wieder).
+
 ## [1.15.4] – 2026-08-12
 
 ### Behoben
