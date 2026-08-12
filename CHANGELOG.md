@@ -8,6 +8,17 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.17.1] – 2026-08-12
+
+### Behoben
+- **Hammer/Blitz-Icon im Header war auf dem Smartphone nach unten verschoben.**
+  Ursache war die Umstellung des Logos von einem `<div>` auf ein echtes
+  `<button>`-Element in V1.17.0 (klickbares Reset-Icon) — mobile Browser
+  wenden auf `<button>` natives Chrome (Padding/Line-Height) an, das den
+  darin absolut positionierten Hammer nach unten drückte. `SmarterCraftLogo`
+  in `App.jsx` bekommt jetzt `appearance-none`, `p-0`/`m-0` und
+  `leading-none`, um das native Button-Styling zu neutralisieren.
+
 ## [1.17.0] – 2026-08-12
 
 ### Hinzugefügt

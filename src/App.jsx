@@ -258,7 +258,7 @@ const SmarterCraftLogo = ({ onClick }) => (
 type="button"
 onClick={onClick}
 title="Eingaben zurücksetzen"
-className="relative w-10 h-10 rounded-full focus:outline-none focus:ring-2 focus:ring-white/70"
+className="appearance-none block relative w-10 h-10 p-0 m-0 leading-none rounded-full focus:outline-none focus:ring-2 focus:ring-white/70"
 >
 {/* Basis: Hammer */}
 <Hammer className="absolute w-full h-full text-white/90" />
