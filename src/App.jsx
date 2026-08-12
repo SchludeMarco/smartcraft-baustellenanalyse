@@ -3,7 +3,7 @@ import {
 Camera, Image, Upload, Wrench, Loader2, Zap, AlertTriangle, CheckCircle,
 Smartphone, FileText, Pipette, Paintbrush, Flower, Hammer, BrickWall, Home,
 Settings, MoreHorizontal, User, Package, Shield, Video, RefreshCw,
-Volume2, VolumeX, List, X, Lock
+Volume2, VolumeX, List, X, Lock, Clock, LayoutGrid
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import {
@@ -362,6 +362,8 @@ const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
 const [isTtsPlaying, setIsTtsPlaying] = useState(false);
 const [ttsVoices, setTtsVoices] = useState([]);
+// --- Infografik (visuelle Lösungsschritte) ---
+const [resultView, setResultView] = useState('infographic');
 const [ttsGender, setTtsGender] = useState(() => {
 try {
 return localStorage.getItem('smartcraft-tts-gender') === 'male' ? 'male' : 'female';
@@ -680,6 +682,7 @@ return;
 setIsAnalyzing(true);
 setError(null);
 setSolutionText(null);
+setResultView('infographic');
 // Zurücksetzen aller Neben-Features
 setMaterialList(null);
 setSafetyTips(null);
@@ -1109,6 +1112,53 @@ printWindow.print();
 setError("Der Browser hat das Popup-Fenster blockiert. Bitte erlauben Sie Popups.");
 }
 }, [solutionText, problemDescription, selectedImageBase64, selectedTrade, materialList, safetyTips, videoLinks, clientReport]);
+// Zerlegt den KI-Freitext (solutionText hat kein responseSchema, siehe oben)
+// in eine kurze Einleitung + nummerierte Lösungsschritte, damit daraus eine
+// Infografik aus Schritt-Karten statt reinem Fließtext gebaut werden kann.
+// Läuft komplett clientseitig (keine externe API) -> kostenfrei.
+const solutionSteps = useMemo(() => {
+if (!solutionText) return null;
+const lines = solutionText.split('\n').map((l) => l.trim()).filter(Boolean);
+const stepPattern = /^(?:schritt\s*)?(\d{1,2})[.):]\s*(.+)$/i;
+const steps = [];
+const introLines = [];
+let currentStep = null;
+for (const line of lines) {
+const match = line.match(stepPattern);
+if (match) {
+if (currentStep) steps.push(currentStep);
+currentStep = { number: match[1], text: match[2] };
+} else if (currentStep) {
+currentStep.text += ' ' + line;
+} else {
+introLines.push(line);
+}
+}
+if (currentStep) steps.push(currentStep);
+// Bei zu wenig erkannter Struktur lohnt sich die Kartenansicht nicht
+// -> Aufrufer fällt automatisch auf die reine Textansicht zurück.
+if (steps.length < 2) return null;
+return { intro: introLines.join(' '), steps };
+}, [solutionText]);
+// Ordnet einem Lösungsschritt anhand von Schlüsselwörtern ein passendes
+// Icon zu (Sicherheitshinweis, Zeitaufwand, Werkzeug, Material) — rein
+// heuristisch, da der Diagnosetext kein festes JSON-Format hat.
+const classifyStepIcon = useCallback((text) => {
+const lower = text.toLowerCase();
+if (/(achtung|vorsicht|gefahr|warnung|risiko|strom(schlag)?|einsturz)/.test(lower)) {
+return { Icon: AlertTriangle, color: '#B45309' };
+}
+if (/(minute|stunde|std\.|zeitaufwand)/.test(lower)) {
+return { Icon: Clock, color: '#2563EB' };
+}
+if (/(werkzeug|schraub|bohr|hammer|säge|zange|pinsel)/.test(lower)) {
+return { Icon: Wrench, color: '#4B5563' };
+}
+if (/(material|kaufen|besorgen|kleber|farbe|dichtung|ersatzteil)/.test(lower)) {
+return { Icon: Package, color: '#4F46E5' };
+}
+return { Icon: CheckCircle, color: '#16A34A' };
+}, []);
 // Dünne Abstraktion für die Anzeige des Ergebniszustands (Laden, Fehler, Lösung)
 const ResultDisplay = useMemo(() => {
 // NEUE PRÜFUNG: Mindestens ein Element muss vorhanden sein
@@ -1152,10 +1202,61 @@ return (
 Lösung und Diagnose
 </h2>
 {/* 1. Hauptlösung */}
+{solutionSteps && (
+<div className="flex items-center justify-end -mb-2">
+<div className="flex rounded-lg overflow-hidden border border-gray-300 text-xs font-semibold">
+<button
+type="button"
+onClick={() => setResultView('infographic')}
+aria-pressed={resultView === 'infographic'}
+className={`flex items-center gap-1 px-3 py-2 transition-colors ${resultView === 'infographic' ? 'text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+style={resultView === 'infographic' ? { backgroundColor: theme.accent } : undefined}
+>
+<LayoutGrid className="w-3.5 h-3.5" /> Infografik
+</button>
+<button
+type="button"
+onClick={() => setResultView('text')}
+aria-pressed={resultView === 'text'}
+className={`flex items-center gap-1 px-3 py-2 border-l border-gray-300 transition-colors ${resultView === 'text' ? 'text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+style={resultView === 'text' ? { backgroundColor: theme.accent } : undefined}
+>
+<List className="w-3.5 h-3.5" /> Text
+</button>
+</div>
+</div>
+)}
+{solutionSteps && resultView === 'infographic' ? (
+<div className="max-h-96 overflow-y-auto p-1 space-y-3">
+{solutionSteps.intro && (
+<p className="text-sm text-gray-600 italic px-1">{solutionSteps.intro}</p>
+)}
+<div className="grid gap-3 sm:grid-cols-2">
+{solutionSteps.steps.map((step, idx) => {
+const { Icon, color } = classifyStepIcon(step.text);
+return (
+<div key={idx} className="flex gap-3 p-3 rounded-xl border border-gray-200 shadow-sm bg-white">
+<div
+className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-sm"
+style={{ backgroundColor: theme.accent }}
+>
+{step.number}
+</div>
+<div className="flex-1 min-w-0">
+<Icon className="w-4 h-4 mb-1" style={{ color }} />
+<p className="text-sm text-gray-700 leading-snug">{step.text}</p>
+</div>
+</div>
+);
+})}
+</div>
+</div>
+) : (
 <div className="prose max-w-none text-gray-700 leading-relaxed max-h-96 overflow-y-auto p-3 border border-gray-200 rounded-lg bg-gray-50">
 {/* Anzeige des Lösungstextes */}
 <div dangerouslySetInnerHTML={{ __html: solutionText.replace(/\n/g, '<br/>') }} />
 </div>
+)}
 {/* Sprachausgabe (TTS) — läuft clientseitig über die Web Speech API des Browsers */}
 {ttsSupported ? (
 <div className="p-3 bg-gray-50 border-l-4 rounded-lg shadow-md space-y-2" style={{ borderColor: theme.accent }}>
