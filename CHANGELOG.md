@@ -8,6 +8,23 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.18.0] – 2026-08-12
+
+### Hinzugefügt
+- **Sprachausgabe (TTS) für die KI-Diagnose reaktiviert.** Der frühere Anlauf
+  (serverseitiger Gemini-TTS-Aufruf) war wegen fehlender API-Berechtigung
+  (Status 401) dauerhaft deaktiviert und der zugehörige tote Code bereits
+  entfernt (siehe `README.md`, „Bekannte Einschränkungen"). Statt eines
+  eigenen API-Calls läuft die neue Umsetzung rein clientseitig über die
+  Web Speech API des Browsers (`window.speechSynthesis`) — kein API-Key,
+  keine Autorisierungsprobleme mehr. Ein „Diagnose vorlesen"-Button in der
+  Ergebnisanzeige liest den Lösungstext vor; die Stimmenauswahl
+  (`pickGermanVoice` in `App.jsx`) bevorzugt automatisch eine "Google"-Stimme,
+  falls der Browser eine anbietet, und lässt sich per Weiblich/Männlich-Umschalter
+  steuern (Heuristik anhand bekannter Stimmennamen, da die Web Speech API selbst
+  kein Geschlecht liefert). Enthält einen Workaround für einen bekannten
+  Chrome-Bug, der sehr lange Ansagen nach ca. 15s abbricht.
+
 ## [1.17.3] – 2026-08-12
 
 ### Behoben

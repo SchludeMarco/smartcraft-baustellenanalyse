@@ -154,10 +154,15 @@ Environment Variables in den Vercel-Projekteinstellungen:
 
 ## Bekannte Einschränkungen & Ausblick
 
-- **TTS (Sprachausgabe)** ist im Code vorbereitet (inkl. eigener WAV-Encoder), aber
-  deaktiviert — im Original fehlte die API-Berechtigung dafür. Naheliegende
-  Erweiterung: Diagnose auf der Baustelle vorlesen lassen, wenn beide Hände beschäftigt
-  sind.
+- **TTS (Sprachausgabe)** liest die KI-Diagnose auf Wunsch vor — praktisch auf der
+  Baustelle, wenn beide Hände beschäftigt sind. Läuft rein clientseitig über die
+  Web Speech API des Browsers (kein eigener API-Key nötig, siehe `App.jsx`,
+  `pickGermanVoice`), bevorzugt dabei automatisch eine "Google"-Stimme, falls der
+  Browser eine anbietet, und lässt sich zwischen weiblicher/männlicher Stimme
+  umschalten (Heuristik anhand des Stimmennamens, da die Web Speech API selbst
+  kein Geschlecht liefert). Welche Stimmen tatsächlich zur Wahl stehen, hängt vom
+  Browser/Betriebssystem ab — z.B. bietet Windows nur Microsoft-Stimmen, Chrome mit
+  Google-Konto zusätzlich "Google Deutsch".
 - **Google-Sign-In ist optional, nicht Pflicht:** jeder Nutzer startet weiterhin
   sofort anonym (keine Hürde vor der ersten Nutzung) und kann die Sitzung im
   Profil-Menü freiwillig per Google-Konto "aufwerten". Wer das nicht tut, bleibt

@@ -3,7 +3,7 @@ import {
 Camera, Image, Upload, Wrench, Loader2, Zap, AlertTriangle, CheckCircle,
 Smartphone, FileText, Pipette, Paintbrush, Flower, Hammer, BrickWall, Home,
 Settings, MoreHorizontal, User, Package, Shield, Video, RefreshCw,
-VolumeX, List, X, Lock
+Volume2, VolumeX, List, X, Lock
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import {
@@ -77,6 +77,34 @@ const TRADE_ICONS = [
 { name: "Allround-Handwerker", icon: Settings },
 { name: "Sonstig...", icon: MoreHorizontal },
 ];
+// Sprachausgabe (TTS) läuft rein clientseitig über die Web Speech API des
+// Browsers (kein eigener API-Key, keine 401-Probleme wie beim früheren,
+// serverseitigen Anlauf). Chrome/Edge liefern dabei bevorzugt "Google"-Stimmen
+// aus — die API selbst kennt aber kein Geschlecht, nur den Stimmennamen, daher
+// die Heuristik unten anhand bekannter Stimmennamen der gängigen Engines.
+const TTS_FEMALE_NAME_HINTS = ['katja', 'anna', 'petra', 'vicki', 'marlene', 'helena', 'sabine', 'ingrid', 'hedda', 'female', 'weiblich'];
+const TTS_MALE_NAME_HINTS = ['stefan', 'markus', 'conrad', 'yannick', 'klaus', 'hans', 'ralf', 'male', 'männlich'];
+const ttsVoiceMatchesGender = (voice, gender) => {
+const name = voice.name.toLowerCase();
+const hints = gender === 'male' ? TTS_MALE_NAME_HINTS : TTS_FEMALE_NAME_HINTS;
+return hints.some((hint) => name.includes(hint));
+};
+// Wählt aus den vom Browser gemeldeten Stimmen die beste deutsche TTS-Stimme:
+// bevorzugt eine Google-Stimme passend zum gewünschten Geschlecht, sonst eine
+// beliebige deutsche Stimme mit passendem Geschlecht, sonst irgendeine
+// Google- bzw. deutsche bzw. überhaupt verfügbare Stimme.
+const pickGermanVoice = (voices, gender) => {
+const germanVoices = voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith('de'));
+const pool = germanVoices.length > 0 ? germanVoices : voices;
+const googleVoices = pool.filter((v) => v.name.toLowerCase().includes('google'));
+return (
+googleVoices.find((v) => ttsVoiceMatchesGender(v, gender)) ||
+pool.find((v) => ttsVoiceMatchesGender(v, gender)) ||
+googleVoices[0] ||
+pool[0] ||
+null
+);
+};
 /**
 * Funktion zur Konvertierung einer Datei in Base64 (wird für die API benötigt)
 */
@@ -330,6 +358,75 @@ const [isGeneratingMaterials, setIsGeneratingMaterials] = useState(false);
 const [isGeneratingSafety, setIsGeneratingSafety] = useState(false);
 const [isGeneratingVideos, setIsGeneratingVideos] = useState(false);
 const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+// --- TTS (Sprachausgabe) States ---
+const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+const [isTtsPlaying, setIsTtsPlaying] = useState(false);
+const [ttsVoices, setTtsVoices] = useState([]);
+const [ttsGender, setTtsGender] = useState(() => {
+try {
+return localStorage.getItem('smartcraft-tts-gender') === 'male' ? 'male' : 'female';
+} catch {
+return 'female';
+}
+});
+// Manche Browser (v.a. Chrome) melden Stimmen erst asynchron über
+// "voiceschanged" statt sofort bei getVoices().
+useEffect(() => {
+if (!ttsSupported) return;
+const loadVoices = () => setTtsVoices(window.speechSynthesis.getVoices());
+loadVoices();
+window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
+return () => window.speechSynthesis.removeEventListener('voiceschanged', loadVoices);
+}, [ttsSupported]);
+useEffect(() => {
+try {
+localStorage.setItem('smartcraft-tts-gender', ttsGender);
+} catch {
+// localStorage kann in privaten/eingeschränkten Kontexten fehlen — Einstellung bleibt dann nur für die Sitzung
+}
+}, [ttsGender]);
+// Chrome bricht sehr lange Ansagen nach ca. 15s ab, wenn speechSynthesis
+// nicht regelmäßig "angestupst" wird — bekannter Browser-Bug, daher
+// pause/resume alle 10s während der Wiedergabe.
+useEffect(() => {
+if (!isTtsPlaying || !ttsSupported) return;
+const keepAlive = setInterval(() => {
+if (window.speechSynthesis.speaking) {
+window.speechSynthesis.pause();
+window.speechSynthesis.resume();
+}
+}, 10000);
+return () => clearInterval(keepAlive);
+}, [isTtsPlaying, ttsSupported]);
+// Laufende Sprachausgabe beim Verlassen der Seite/Komponente stoppen
+useEffect(() => {
+if (!ttsSupported) return;
+return () => window.speechSynthesis.cancel();
+}, [ttsSupported]);
+const ttsSelectedVoice = useMemo(() => pickGermanVoice(ttsVoices, ttsGender), [ttsVoices, ttsGender]);
+const handleToggleTts = useCallback(() => {
+if (!ttsSupported) return;
+if (isTtsPlaying) {
+window.speechSynthesis.cancel();
+setIsTtsPlaying(false);
+return;
+}
+if (!solutionText) return;
+window.speechSynthesis.cancel();
+// Markdown-Reste (Sternchen, Rauten, Aufzählungsstriche) vor dem Vorlesen entfernen
+const plainText = solutionText
+.replace(/[*_#`]/g, '')
+.replace(/^-\s+/gm, '')
+.replace(/\n{2,}/g, '. ')
+.replace(/\n/g, ' ');
+const utterance = new SpeechSynthesisUtterance(plainText);
+utterance.lang = 'de-DE';
+if (ttsSelectedVoice) utterance.voice = ttsSelectedVoice;
+utterance.onend = () => setIsTtsPlaying(false);
+utterance.onerror = () => setIsTtsPlaying(false);
+window.speechSynthesis.speak(utterance);
+setIsTtsPlaying(true);
+}, [ttsSupported, isTtsPlaying, solutionText, ttsSelectedVoice]);
 // --- EFFECT: FIREBASE INITIALISIERUNG UND ANONYME ANMELDUNG ---
 useEffect(() => {
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
@@ -460,6 +557,8 @@ setIsStartingFreshSession(false);
 }, [auth]);
 // --- FUNKTION: ALLES ZURÜCKSETZEN ---
 const handleReset = useCallback(() => {
+if (ttsSupported) window.speechSynthesis.cancel();
+setIsTtsPlaying(false);
 setSelectedImageBase64(null);
 setProblemDescription('');
 setSolutionText(null);
@@ -479,7 +578,7 @@ setIsGeneratingReport(false);
 const fileInput = document.getElementById(id);
 if (fileInput) fileInput.value = '';
 });
-}, []);
+}, [ttsSupported]);
 // --- FUNKTION: NUR FEHLERZUSTAND ZURÜCKSETZEN (Bild bleibt erhalten) ---
 const clearError = useCallback(() => {
 setError(null);
@@ -1057,13 +1156,52 @@ Lösung und Diagnose
 {/* Anzeige des Lösungstextes */}
 <div dangerouslySetInnerHTML={{ __html: solutionText.replace(/\n/g, '<br/>') }} />
 </div>
-{/* TTS DEAKTIVIERT (Wegen API 401 Fehler) */}
+{/* Sprachausgabe (TTS) — läuft clientseitig über die Web Speech API des Browsers */}
+{ttsSupported ? (
+<div className="p-3 bg-gray-50 border-l-4 rounded-lg shadow-md space-y-2" style={{ borderColor: theme.accent }}>
+<div className="flex items-center justify-between gap-2 flex-wrap">
+<button
+type="button"
+onClick={handleToggleTts}
+className="flex items-center px-3 py-2 rounded-lg font-bold text-white shadow-md transition duration-300 text-sm active:scale-[0.98]"
+style={{ backgroundColor: theme.accent }}
+>
+{isTtsPlaying ? <VolumeX className="w-4 h-4 mr-2" /> : <Volume2 className="w-4 h-4 mr-2" />}
+{isTtsPlaying ? 'Vorlesen stoppen' : 'Diagnose vorlesen'}
+</button>
+<div className="flex rounded-lg overflow-hidden border border-gray-300 text-xs font-semibold">
+<button
+type="button"
+onClick={() => setTtsGender('female')}
+aria-pressed={ttsGender === 'female'}
+className={`px-3 py-2 transition-colors ${ttsGender === 'female' ? 'text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+style={ttsGender === 'female' ? { backgroundColor: theme.accent } : undefined}
+>
+Weiblich
+</button>
+<button
+type="button"
+onClick={() => setTtsGender('male')}
+aria-pressed={ttsGender === 'male'}
+className={`px-3 py-2 border-l border-gray-300 transition-colors ${ttsGender === 'male' ? 'text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+style={ttsGender === 'male' ? { backgroundColor: theme.accent } : undefined}
+>
+Männlich
+</button>
+</div>
+</div>
+{ttsSelectedVoice && (
+<p className="text-xs text-gray-500">Stimme: {ttsSelectedVoice.name}</p>
+)}
+</div>
+) : (
 <div className="p-3 bg-gray-100 border-l-4 border-gray-400 text-gray-600 rounded-lg shadow-md flex items-center justify-center">
 <VolumeX className="w-5 h-5 mr-3" />
 <p className="text-sm font-semibold">
-Sprachausgabe (TTS) ist aktuell aufgrund von Autorisierungsproblemen (Status 401) deaktiviert.
+Sprachausgabe wird von diesem Browser nicht unterstützt.
 </p>
 </div>
+)}
 {/* 2. Neue LLM-Funktionen (bleiben als 2x2 Grid) */}
 <div className="border-t pt-4 border-gray-100">
 <h3 className="text-lg font-semibold text-gray-700 mb-3">Zusätzliche KI-Tools:</h3>
@@ -1244,7 +1382,7 @@ Um die Analyse zu starten, benötigen Sie **eines** der folgenden Elemente:
 <p className="text-xs mt-4 text-gray-500">Wählen Sie zuerst Ihr Gewerk (Abschnitt 1) für eine präzisere Diagnose.</p>
 </div>
 );
-}, [isAnalyzing, error, clearError, solutionText, handleExportPdf, materialList, safetyTips, videoLinks, clientReport, isGeneratingMaterials, isGeneratingSafety, isGeneratingVideos, isGeneratingReport, callGeminiMaterialsAPI, callGeminiSafetyAPI, callGeminiVideoSearch, callGeminiClientReportAPI, selectedImageBase64, problemDescription]);
+}, [isAnalyzing, error, clearError, solutionText, handleExportPdf, materialList, safetyTips, videoLinks, clientReport, isGeneratingMaterials, isGeneratingSafety, isGeneratingVideos, isGeneratingReport, callGeminiMaterialsAPI, callGeminiSafetyAPI, callGeminiVideoSearch, callGeminiClientReportAPI, selectedImageBase64, problemDescription, ttsSupported, isTtsPlaying, ttsGender, ttsSelectedVoice, handleToggleTts, theme]);
 // Profil-Modal-Komponente (angepasst an Rot/Blau)
 const UserProfileModal = () => {
 const [showProfile, setShowProfile] = useState(false);
