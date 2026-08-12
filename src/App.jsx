@@ -261,6 +261,27 @@ const SmarterCraftLogo = () => (
 <Zap className="absolute w-5 h-5 bottom-0 right-0 transform translate-x-1 translate-y-1 text-yellow-300 fill-yellow-300 shadow-md" />
 </div>
 );
+// Extrahiert die für die Profil-UI relevanten Felder aus einem Firebase-User.
+// Zwei Gründe, warum das nicht einfach `user` selbst sein kann:
+// 1. Nach linkWithPopup() (anonym -> Google) bleiben displayName/email/photoURL
+//    auf dem User-Root-Objekt teils leer — die eigentlichen Werte stehen dann
+//    nur in providerData[]. Fällt hier explizit darauf zurück.
+// 2. Firebase mutiert das User-Objekt teils in-place und liefert bei erneuten
+//    onAuthStateChanged-Aufrufen dieselbe Objektreferenz zurück — ein reines
+//    setAuthUser(user) würde React dann per Object.is-Vergleich keinen Re-Render
+//    auslösen lassen, obwohl sich z.B. das Foto geändert hat. Ein frisches
+//    Plain-Object umgeht das zuverlässig.
+const toAuthUserSnapshot = (user) => {
+if (!user) return null;
+const googleProvider = user.providerData?.find((p) => p.providerId === 'google.com');
+return {
+uid: user.uid,
+isAnonymous: user.isAnonymous,
+displayName: user.displayName || googleProvider?.displayName || null,
+email: user.email || googleProvider?.email || null,
+photoURL: user.photoURL || googleProvider?.photoURL || null,
+};
+};
 const App = () => {
 // --- Firebase States ---
 const [db, setDb] = useState(null);
@@ -358,7 +379,7 @@ setError("Kritischer Fehler: Die App konnte keine anonyme Sitzung starten. Histo
 const unsubscribe = onAuthStateChanged(authInstance, (user) => {
 if (user && user.uid) {
 setUserId(user.uid);
-setAuthUser(user);
+setAuthUser(toAuthUserSnapshot(user));
 setShowAuth(false);
 } else {
 setUserId(null);
@@ -1179,7 +1200,13 @@ const UserProfileModal = () => {
 const [showProfile, setShowProfile] = useState(false);
 const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
 const [googleSignInError, setGoogleSignInError] = useState(null);
+// Fällt auf das generische User-Icon zurück, falls das Google-Profilbild aus
+// irgendeinem Grund nicht lädt (Hotlink-Schutz, CSP, Netzwerk) — sonst bliebe
+// ein kaputtes Bild-Icon stehen statt eines brauchbaren Platzhalters.
+const [googlePhotoFailed, setGooglePhotoFailed] = useState(false);
 const isGoogleUser = authUser?.isAnonymous === false;
+const showGooglePhoto = !!authUser?.photoURL && !googlePhotoFailed;
+useEffect(() => { setGooglePhotoFailed(false); }, [authUser?.photoURL]);
 // Menschenlesbare Meldung je bekanntem Firebase-Auth-Fehlercode. Ohne das
 // blieb ein fehlgeschlagener Google-Login für den Nutzer unsichtbar (nur
 // console.error) — sah aus wie "kurzer schwarzer Screen, dann nichts".
@@ -1223,11 +1250,16 @@ setIsGoogleSigningIn(true);
 setGoogleSignInError(null);
 const provider = new GoogleAuthProvider();
 try {
+let result;
 if (auth.currentUser?.isAnonymous) {
-await linkWithPopup(auth.currentUser, provider);
+result = await linkWithPopup(auth.currentUser, provider);
 } else {
-await signInWithPopup(auth, provider);
+result = await signInWithPopup(auth, provider);
 }
+// onAuthStateChanged feuert nach linkWithPopup nicht zuverlässig erneut
+// (gleiche UID) — Snapshot direkt aus dem Ergebnis setzen, damit Foto/Name
+// sofort sichtbar sind statt erst nach einem Reload.
+setAuthUser(toAuthUserSnapshot(result.user));
 setShowProfile(false);
 } catch (e) {
 if (e.code === 'auth/credential-already-in-use') {
@@ -1235,7 +1267,8 @@ if (e.code === 'auth/credential-already-in-use') {
 // verknüpft: dort stattdessen anmelden. Die bisherige anonyme Sitzung
 // samt ihrer lokalen Historie geht dabei verloren.
 try {
-await signInWithPopup(auth, provider);
+const result = await signInWithPopup(auth, provider);
+setAuthUser(toAuthUserSnapshot(result.user));
 setShowProfile(false);
 } catch (e2) {
 console.error('Google-Anmeldung fehlgeschlagen:', e2);
@@ -1265,8 +1298,8 @@ className={`p-2 rounded-full transition duration-200 overflow-hidden ${userId ? 
 disabled={!userId}
 title="Benutzerprofil und Historie anzeigen"
 >
-{authUser?.photoURL ? (
-<img src={authUser.photoURL} alt="" className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" />
+{showGooglePhoto ? (
+<img src={authUser.photoURL} alt="" className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" onError={() => setGooglePhotoFailed(true)} />
 ) : (
 <User className="w-6 h-6 text-white" />
 )}
@@ -1288,8 +1321,8 @@ onClick={e => e.stopPropagation()}
 </div>
 {isGoogleUser ? (
 <div className="flex items-center space-x-3 mb-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
-{authUser.photoURL ? (
-<img src={authUser.photoURL} alt="" className="w-10 h-10 rounded-full flex-shrink-0" referrerPolicy="no-referrer" />
+{showGooglePhoto ? (
+<img src={authUser.photoURL} alt="" className="w-10 h-10 rounded-full flex-shrink-0" referrerPolicy="no-referrer" onError={() => setGooglePhotoFailed(true)} />
 ) : (
 <User className="w-10 h-10 p-2 bg-gray-200 rounded-full text-gray-500 flex-shrink-0" />
 )}

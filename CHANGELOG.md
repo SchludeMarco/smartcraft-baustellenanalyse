@@ -8,6 +8,23 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.15.3] – 2026-08-12
+
+### Behoben
+- **Google-Profilbild wurde nach dem Login nicht angezeigt.** Zwei Ursachen:
+  (1) Nach `linkWithPopup()` (anonym → Google) blieb `photoURL` auf dem
+  User-Root-Objekt teils leer — Firebase legt die eigentlichen Provider-Daten
+  in `user.providerData[]` ab, ohne die Root-Felder zuverlässig nachzuziehen.
+  `toAuthUserSnapshot()` (`App.jsx`) fällt jetzt explizit auf den Google-Eintrag
+  in `providerData` zurück. (2) `onAuthStateChanged` liefert nach dem Linking
+  teils dasselbe (in-place mutierte) User-Objekt zurück — ein rohes
+  `setAuthUser(user)` löste dadurch per React-Referenzvergleich keinen Re-Render
+  aus. Snapshot wird jetzt als frisches Objekt gesetzt, zusätzlich direkt aus
+  dem `linkWithPopup`/`signInWithPopup`-Ergebnis statt nur über den Listener.
+  Schlägt das Laden des Fotos trotzdem fehl (Hotlink-Schutz, CSP, Netzwerk),
+  fällt die UI jetzt sauber auf das generische Profil-Icon zurück (`onError`)
+  statt ein kaputtes Bild anzuzeigen.
+
 ## [1.15.2] – 2026-08-12
 
 ### Behoben
