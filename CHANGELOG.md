@@ -8,6 +8,22 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.15.1] – 2026-08-12
+
+### Behoben
+- **Firestore-Rules-Deploy hatte kein Ziel.** `firestore.rules` lag zwar
+  seit jeher im Repo, aber ohne `firebase.json`/`.firebaserc` wusste
+  `firebase deploy --only firestore:rules` nicht, welches Projekt/welche
+  Regel-Datei gemeint ist ("Not in a Firebase app directory"). Beide
+  Dateien ergänzt (Projekt `smartcraft-baustellenanalyse`), damit die
+  V1.15.0-Regel für `adminMeta` (Gelöst-Status) sowie künftige
+  Rules-Änderungen sich per CLI deployen lassen.
+- **`google-signin`-Fehlerkontext fehlte in `errorContextInfo.js`.** Die
+  in V1.15.0 neuen `queueErrorReport('google-signin', …)`-Aufrufe
+  (`App.jsx`) liefen im Admin-Bereich auf den generischen Fallback
+  "Unbekannter Fehlerkontext" statt einer Ursache-/Lösungshilfe. Eintrag
+  ergänzt.
+
 ## [1.15.0] – 2026-08-12
 
 ### Hinzugefügt

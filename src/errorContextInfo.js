@@ -44,6 +44,11 @@ export const ERROR_CONTEXT_INFO = {
     cause: 'Google-Search-Grounding lieferte keine verwertbare/parsbare Antwort, oder die API-Anfrage schlug fehl.',
     fix: 'Antworttext in der Browser-Konsole prüfen; Regex-Extraktion in callGeminiVideoSearch ggf. anpassen.',
   },
+  'google-signin': {
+    label: 'Google-Anmeldung fehlgeschlagen',
+    cause: 'Google-Login abgebrochen/blockiert (Popup), Account-Linking-Konflikt (Google-Konto bereits mit anderem Nutzer verknüpft), oder Google-Provider ist in der Firebase Console nicht aktiviert.',
+    fix: 'Firebase Console → Authentication → Sign-in method → prüfen, ob "Google" aktiviert ist; bei wiederholtem "credential-already-in-use" ist das erwartetes Verhalten (siehe handleGoogleSignIn in App.jsx).',
+  },
   'react-error-boundary': {
     label: 'Unerwarteter React-Crash',
     cause: 'Ein Rendering-Fehler in der UI (z.B. unerwartete/fehlende Daten) hat die App zum Absturz gebracht.',
