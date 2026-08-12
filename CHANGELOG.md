@@ -8,6 +8,20 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.16.1] – 2026-08-12
+
+### Behoben
+- **Google-Foto füllte den Kreis im Header-Profil-Button trotz `object-cover`
+  nicht aus.** Ursache war nicht das Seitenverhältnis, sondern der Button
+  selbst: `p-2`-Padding um das 24px-Bild ließ innerhalb des größeren
+  gepolsterten `rounded-full`-Buttons einen sichtbaren Rand — object-cover
+  kann das nicht beheben, weil das Bild schlicht kleiner als sein
+  Elternelement war. Button ist jetzt fest `w-10 h-10`, das Foto füllt via
+  `w-full h-full object-cover` randlos den kompletten Kreis; das Fallback-Icon
+  bleibt über Flex-Zentrierung mittig. Betrifft nur den Header-Button — der
+  Avatar im Profil-Modal war davon nicht betroffen (kein umschließendes
+  Padding-Element dort).
+
 ## [1.16.0] – 2026-08-12
 
 ### Hinzugefügt

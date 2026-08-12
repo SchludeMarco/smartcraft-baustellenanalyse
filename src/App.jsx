@@ -1292,15 +1292,16 @@ setIsGoogleSigningIn(false);
 };
 return (
 <>
-{/* Profil-Button im Header */}
+{/* Profil-Button im Header — feste Kreisgröße (w-10 h-10), damit ein Google-Foto
+    randlos bis zum Rand füllt statt in einem gepolsterten Button zu "schweben" */}
 <button
 onClick={() => setShowProfile(true)} // Öffnet Profil-Modal
-className={`p-2 rounded-full transition duration-200 overflow-hidden ${userId ? 'bg-white/20 hover:bg-white/30' : 'bg-gray-500/50 cursor-wait'}`}
+className={`w-10 h-10 flex items-center justify-center rounded-full transition duration-200 overflow-hidden ${userId ? 'bg-white/20 hover:bg-white/30' : 'bg-gray-500/50 cursor-wait'}`}
 disabled={!userId}
 title="Benutzerprofil und Historie anzeigen"
 >
 {showGooglePhoto ? (
-<img src={authUser.photoURL} alt="" className="w-6 h-6 rounded-full object-cover" referrerPolicy="no-referrer" onError={() => setGooglePhotoFailed(true)} />
+<img src={authUser.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={() => setGooglePhotoFailed(true)} />
 ) : (
 <User className="w-6 h-6 text-white" />
 )}
