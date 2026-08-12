@@ -8,6 +8,21 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.16.2] – 2026-08-12
+
+### Behoben
+- **Historie zeigte auf einem geteilten Gerät Analysen einer anderen Person.**
+  Firestore-Analysen waren zwar korrekt pro `userId` gespeichert, aber
+  Firebase Auth hält eine anonyme Sitzung standardmäßig dauerhaft
+  (`browserLocalPersistence`, IndexedDB) und die App übernahm sie beim Start
+  stillschweigend wieder (`App.jsx`, Firebase-Init-Effekt) — schloss jemand
+  nur den Tab statt aktiv „Sitzung beenden" zu klicken, sah die nächste
+  Person am selben Gerät automatisch die Historie der vorigen. Findet die App
+  beim Laden bereits eine zuvor bestehende anonyme Sitzung vor (nicht in
+  diesem Ladevorgang neu angelegt), fragt sie jetzt vor dem Übernehmen aktiv
+  nach: „Weiter als Gast" behält die Sitzung samt Historie, „Neue Sitzung
+  starten" meldet ab und legt eine frische anonyme Sitzung an.
+
 ## [1.16.1] – 2026-08-12
 
 ### Behoben

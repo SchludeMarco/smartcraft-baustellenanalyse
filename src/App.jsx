@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
 Camera, Image, Upload, Wrench, Loader2, Zap, AlertTriangle, CheckCircle,
 Smartphone, FileText, Pipette, Paintbrush, Flower, Hammer, BrickWall, Home,
@@ -253,13 +253,18 @@ const GoogleIcon = ({ className }) => (
 <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" />
 </svg>
 );
-const SmarterCraftLogo = () => (
-<div className="relative w-10 h-10">
+const SmarterCraftLogo = ({ onClick }) => (
+<button
+type="button"
+onClick={onClick}
+title="Eingaben zurücksetzen"
+className="relative w-10 h-10 rounded-full focus:outline-none focus:ring-2 focus:ring-white/70"
+>
 {/* Basis: Hammer */}
 <Hammer className="absolute w-full h-full text-white/90" />
 {/* Overlay: Blitz (Smart-Aspekt), leicht versetzt und hervorgehoben */}
 <Zap className="absolute w-5 h-5 bottom-0 right-0 transform translate-x-1 translate-y-1 text-yellow-300 fill-yellow-300 shadow-md" />
-</div>
+</button>
 );
 // Extrahiert die für die Profil-UI relevanten Felder aus einem Firebase-User.
 // Zwei Gründe, warum das nicht einfach `user` selbst sein kann:
@@ -292,6 +297,11 @@ const [userId, setUserId] = useState(null);
 const [authUser, setAuthUser] = useState(null);
 const [isAuthReady, setIsAuthReady] = useState(false);
 const [showAuth, setShowAuth] = useState(false);
+// Anonyme Sitzung, die beim App-Start bereits im Browser persistiert war
+// (nicht in diesem Ladevorgang neu angelegt) — wartet auf Bestätigung,
+// ob es sich um dieselbe Person handelt, bevor ihre Historie angezeigt wird.
+const [pendingResumeUser, setPendingResumeUser] = useState(null);
+const [isStartingFreshSession, setIsStartingFreshSession] = useState(false);
 const [showHistory, setShowHistory] = useState(false); // Steuert das Historien-Modal
 const [showAdmin, setShowAdmin] = useState(false); // Steuert das Admin-Modal (Fehlerreports)
 const [showDisclaimer, setShowDisclaimer] = useState(true); // EU-AI-Act-Haftungsausschluss wegklickbar (pro Sitzung)
@@ -364,32 +374,45 @@ return;
 }
 setAuth(authInstance);
 setDb(dbInstance);
-const initializeAuth = async () => {
-try {
-let user = authInstance.currentUser;
-if (!user) {
-// Verwende signInAnonymously() als Fallback
-await signInAnonymously(authInstance);
+// Merkt sich, ob die aktuelle onAuthStateChanged-Auflösung die erste seit
+// diesem Seiten-Ladevorgang ist. Nur dann kann eine anonyme Sitzung bereits
+// vor dem Laden im Browser persistiert (und damit potenziell von einer
+// anderen Person übernommen) worden sein — später ausgelöste anonyme Logins
+// (z.B. über "Neue Sitzung starten" oder "Sitzung beenden") sind stets in
+// diesem Ladevorgang selbst neu angelegt und brauchen keine Rückfrage.
+let isFirstAuthResolution = true;
+const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
+const wasFirstResolution = isFirstAuthResolution;
+isFirstAuthResolution = false;
+if (user && user.uid) {
+if (user.isAnonymous && wasFirstResolution) {
+// Bereits vor diesem Ladevorgang bestehende anonyme Sitzung (z.B. von
+// einer anderen Person am selben Gerät) — vor Anzeige ihrer Historie
+// erst bestätigen lassen statt sie stillschweigend zu übernehmen.
+setPendingResumeUser(user);
+setIsAuthReady(true);
+return;
 }
+setUserId(user.uid);
+setAuthUser(toAuthUserSnapshot(user));
+setShowAuth(false);
+setPendingResumeUser(null);
+} else {
+setUserId(null);
+setAuthUser(null);
+setShowAuth(false);
+if (wasFirstResolution) {
+try {
+await signInAnonymously(authInstance);
 } catch (e) {
 console.error("Fehler bei der initialen anonymen Anmeldung:", e);
 queueErrorReport('firebase-auth', e);
 setError("Kritischer Fehler: Die App konnte keine anonyme Sitzung starten. Historie nicht möglich.");
 }
 }
-const unsubscribe = onAuthStateChanged(authInstance, (user) => {
-if (user && user.uid) {
-setUserId(user.uid);
-setAuthUser(toAuthUserSnapshot(user));
-setShowAuth(false);
-} else {
-setUserId(null);
-setAuthUser(null);
-setShowAuth(false);
 }
 setIsAuthReady(true);
 });
-initializeAuth();
 return () => unsubscribe();
 }, []);
 // --- EFFECT: Wartende Fehlerreports senden, sobald eine authentifizierte
@@ -409,6 +432,32 @@ const handleOnline = () => flushErrorReports(db, userId, appId, reporterInfo);
 window.addEventListener('online', handleOnline);
 return () => window.removeEventListener('online', handleOnline);
 }, [db, userId, authUser]);
+// --- FUNKTIONEN: BEIM APP-START VORGEFUNDENE ANONYME SITZUNG BESTÄTIGEN ---
+// Übernimmt die bereits im Browser persistierte anonyme Sitzung (samt ihrer
+// Historie) als die eigene.
+const handleContinueAsGuest = useCallback(() => {
+if (!pendingResumeUser) return;
+setUserId(pendingResumeUser.uid);
+setAuthUser(toAuthUserSnapshot(pendingResumeUser));
+setPendingResumeUser(null);
+}, [pendingResumeUser]);
+// Verwirft die vorgefundene anonyme Sitzung und legt eine frische an, damit
+// eine andere Person am selben Gerät nicht die Historie der vorigen sieht.
+const handleStartFreshSession = useCallback(async () => {
+if (!auth) return;
+setIsStartingFreshSession(true);
+try {
+await signOut(auth);
+await signInAnonymously(auth);
+setPendingResumeUser(null);
+} catch (e) {
+console.error("Fehler beim Starten einer neuen Sitzung:", e);
+queueErrorReport('firebase-auth-fresh-session', e);
+setError("Neue Sitzung konnte nicht gestartet werden.");
+} finally {
+setIsStartingFreshSession(false);
+}
+}, [auth]);
 // --- FUNKTION: ALLES ZURÜCKSETZEN ---
 const handleReset = useCallback(() => {
 setSelectedImageBase64(null);
@@ -1411,6 +1460,47 @@ className='text-white p-6 bg-(--accent) rounded-xl max-w-sm text-center transiti
 </div>
 );
 }
+if (pendingResumeUser) {
+// Auf diesem Gerät wurde eine bereits vorher angelegte anonyme Sitzung
+// gefunden (nicht in diesem Ladevorgang neu erstellt) — bevor deren
+// Historie sichtbar wird, muss bestätigt werden, dass es dieselbe Person ist.
+return (
+<div
+className="min-h-screen flex justify-center items-center bg-gray-800 bg-cover bg-center bg-fixed bg-no-repeat"
+style={{ backgroundImage: "url(https://storage.googleapis.com/bacon-images-prod/gemini/app_builder/werkzeuge.jpg)" }}
+>
+<div className="absolute inset-0 bg-black/40 z-0"></div>
+<div
+style={{ '--accent': theme.accent }}
+className='relative z-10 text-white p-6 bg-(--accent) rounded-xl max-w-sm text-center transition-colors duration-700 ease-in-out space-y-4'
+>
+<User className="w-8 h-8 mx-auto" />
+<p className='font-bold'>Gast-Sitzung auf diesem Gerät gefunden</p>
+<p className='text-sm text-white/90'>
+Auf diesem Gerät ist noch eine anonyme Sitzung mit gespeicherter Historie aktiv. Bist du das, oder nutzt hier gerade jemand anders die App?
+</p>
+<div className="flex flex-col space-y-2 pt-2">
+<button
+onClick={handleContinueAsGuest}
+className="w-full px-4 py-2 bg-white text-gray-800 font-semibold rounded-xl hover:bg-gray-100 transition duration-300 text-sm transform active:scale-[0.98]"
+>
+Weiter als Gast (das ist meine Sitzung)
+</button>
+<button
+onClick={handleStartFreshSession}
+disabled={isStartingFreshSession}
+className="w-full flex items-center justify-center px-4 py-2 bg-black/20 border border-white/40 text-white font-semibold rounded-xl hover:bg-black/30 transition duration-300 text-sm transform active:scale-[0.98] disabled:opacity-60"
+>
+{isStartingFreshSession ? (
+<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+) : null}
+Neue Sitzung starten (das ist nicht meine)
+</button>
+</div>
+</div>
+</div>
+);
+}
 // Haupt-App-Ansicht
 return (
 <div
@@ -1447,7 +1537,7 @@ onClose={() => setShowAdmin(false)}
 <div className="flex items-center justify-between relative z-10">
 <div className="flex items-center space-x-3">
 {/* EINGEBETTETES, STABILES LOGO (Lucide-Icons) */}
-<SmarterCraftLogo />
+<SmarterCraftLogo onClick={handleReset} />
 {/* Versionsnummer stammt aus package.json (siehe vite.config.js define: __APP_VERSION__) */}
 <h1 className="text-2xl font-extrabold text-white tracking-tight">Sm@rtCraft! <span className='text-sm font-light italic'>(V{__APP_VERSION__})</span></h1>
 </div>
