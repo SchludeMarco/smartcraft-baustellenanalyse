@@ -8,6 +8,26 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.14.1] – 2026-08-12
+
+### Hinzugefügt
+- **`error_log.md` als kuratiertes Fehler-Log.** Das Admin-Terminal
+  (`AdminPanel.jsx`) zeigt jeden je über `queueErrorReport` gemeldeten
+  Fehler unverändert für immer an — es gibt in Firestore keinen
+  "gelöst"-Status, dadurch sammelten sich dort auch längst behobene
+  Reports neben aktuellen an. Neue Datei `error_log.md` fasst die
+  Fehlerbilder kuratiert zusammen (Kontext, Häufigkeit, betroffene
+  Versionen, Ursache, Status `Offen`/`Beobachten`/`Gelöst`) und wird ab
+  jetzt bei jedem Bugfix mitgepflegt (siehe `CLAUDE.md`). Neues Skript
+  `scripts/fetch-error-reports.mjs` liest die Reports read-only per
+  anonymer Anmeldung aus der `errorReports`-Collection-Group aus (gleicher
+  Weg wie `errorReporting.js`/`AdminPanel.jsx`), Aufruf: `node --env-file=.env
+  scripts/fetch-error-reports.mjs`. Erstbefüllung ergab 2 offene
+  Fehlerbilder (`gemini-vision-api`: "Fehler bei der KI-Anfrage oder leere
+  Antwort.", 4× zwischen V1.8.2–V1.10.0; `gemini-video-search-api`:
+  "API error: ", 1× in V1.13.0) — Firestore-Reports selbst bleiben
+  unangetastet als Rohdaten-Historie bestehen.
+
 ## [1.14.0] – 2026-08-12
 
 ### Hinzugefügt

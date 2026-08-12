@@ -15,6 +15,21 @@ je Eintrag, gruppiert nach Version). Bei jedem Versions-Bump (siehe unten)
 einen passenden Eintrag ergänzen — nicht nur committen, ohne die Datei
 nachzuziehen.
 
+## Fehler-Log
+
+`error_log.md` ist die kuratierte Übersicht der über den Admin-Bereich
+(`AdminPanel.jsx` / Firestore-`errorReports`-Collection) gemeldeten Fehler —
+im Gegensatz zum Admin-Terminal (das jeden je gemeldeten Report für immer
+anzeigt) mit Status pro Fehlerbild (`Offen`/`Beobachten`/`Gelöst`). Aktuelle
+Reports lassen sich per `node --env-file=.env scripts/fetch-error-reports.mjs`
+live aus Firestore abrufen.
+
+Wird ein in `error_log.md` gelisteter Fehler im Rahmen einer Aufgabe behoben:
+Eintrag von "Offene Fehler" nach "Gelöste Fehler" verschieben, Status samt
+Versionsverweis (auf den neuen `CHANGELOG.md`-Eintrag) ergänzen. Neu über den
+Admin-Bereich gemeldete, noch unbekannte Fehler bei Gelegenheit als offener
+Eintrag ergänzen.
+
 ## Automatisches Commit & Push
 
 Nach Abschluss einer sinnvollen Arbeitseinheit (z.B. ein Feature, ein Bugfix,
