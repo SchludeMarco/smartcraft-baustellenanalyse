@@ -8,6 +8,18 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.17.2] – 2026-08-12
+
+### Behoben
+- **Reine Textbeschreibung ohne Bild ließ sich gar nicht erst eingeben.**
+  Das Eingabefeld für die Problembeschreibung (`textarea` in `App.jsx`,
+  Bereich „2. Problem dokumentieren & analysieren") wurde nur eingeblendet,
+  wenn bereits ein Bild ausgewählt war oder das Feld selbst schon Text
+  enthielt — ein Henne-Ei-Problem, das reine Texteingabe faktisch unmöglich
+  machte, obwohl der Analyse-Button (und dessen Placeholder „Optional") das
+  längst zuließ. Das Feld wird jetzt immer angezeigt, nur die Bildvorschau
+  bleibt an ein vorhandenes Bild geknüpft.
+
 ## [1.17.1] – 2026-08-12
 
 ### Behoben

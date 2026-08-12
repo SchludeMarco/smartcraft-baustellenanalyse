@@ -1613,7 +1613,6 @@ onClick={saveTradePreference} // Speichert direkt in Firestore
 </label>
 </div>
 {/* Bild-Vorschau und Beschreibung */}
-{(selectedImageBase64 || problemDescription.trim().length > 0) && (
 <div className="mt-2">
 {selectedImageBase64 && (
 <div className="relative w-full h-48 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center mb-4">
@@ -1644,7 +1643,6 @@ className="w-full p-2 border border-gray-300 rounded-lg focus:ring-orange-500 fo
 />
 </div>
 </div>
-)}
 </div>
 {/* ANGEPASST: Reset-Button wieder neben dem Analyse-Button */}
 <div className="flex space-x-3 mt-4 w-full">
