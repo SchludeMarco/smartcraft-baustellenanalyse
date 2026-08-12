@@ -8,6 +8,18 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.17.3] – 2026-08-12
+
+### Behoben
+- **Exportierter PDF-Bericht zeigte noch den alten Namen "SM@RTCRAFT -
+  Baustellenanalyse".** Beim Rebranding auf die Tagline "Der Kollege in der
+  Hosentasche" (V1.9.2) wurde die Überschrift im PDF-Export-Template
+  (`handleExportPdf` in `App.jsx`) übersehen, da sie in einem separaten
+  HTML-String für den Ausdruck steht statt in der sichtbaren React-UI. Alle
+  anderen Web-Vorkommen des Namens sind interne, bewusst unveränderte
+  IDs (Firebase-/Vercel-Projektname, npm-Paketname, Firestore-`appId`) —
+  siehe Begründung im Eintrag zu V1.9.2.
+
 ## [1.17.2] – 2026-08-12
 
 ### Behoben

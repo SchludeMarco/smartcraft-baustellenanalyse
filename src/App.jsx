@@ -974,7 +974,7 @@ th { background-color: #eee; }
 </style>
 </head>
 <body>
-<h1>SM@RTCRAFT - Baustellenanalyse</h1>
+<h1>Sm@rtCraft – Der Kollege in der Hosentasche</h1>
 <p class="meta"><strong>Berichtsdatum:</strong> ${date}</p>
 ${tradeHtml}
 <div class="section">
