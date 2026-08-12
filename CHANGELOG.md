@@ -8,6 +8,16 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.15.4] – 2026-08-12
+
+### Behoben
+- **Google-Profilbild füllte den runden Avatar-Rahmen nicht vollständig aus.**
+  Ohne `object-fit` passt ein `<img>` sein Seitenverhältnis standardmäßig
+  unvorhersehbar an die vorgegebene Box an — je nach zurückgegebener
+  Bildgröße blieb dadurch ein sichtbarer Rand im Kreis. Beide Avatar-`<img>`s
+  (Header-Button, Profil-Modal, `App.jsx`) haben jetzt `object-cover`, damit
+  das Foto zugeschnitten statt gestaucht/eingerückt den Kreis lückenlos füllt.
+
 ## [1.15.3] – 2026-08-12
 
 ### Behoben

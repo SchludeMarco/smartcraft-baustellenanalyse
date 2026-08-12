@@ -1299,7 +1299,7 @@ disabled={!userId}
 title="Benutzerprofil und Historie anzeigen"
 >
 {showGooglePhoto ? (
-<img src={authUser.photoURL} alt="" className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" onError={() => setGooglePhotoFailed(true)} />
+<img src={authUser.photoURL} alt="" className="w-6 h-6 rounded-full object-cover" referrerPolicy="no-referrer" onError={() => setGooglePhotoFailed(true)} />
 ) : (
 <User className="w-6 h-6 text-white" />
 )}
@@ -1322,7 +1322,7 @@ onClick={e => e.stopPropagation()}
 {isGoogleUser ? (
 <div className="flex items-center space-x-3 mb-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
 {showGooglePhoto ? (
-<img src={authUser.photoURL} alt="" className="w-10 h-10 rounded-full flex-shrink-0" referrerPolicy="no-referrer" onError={() => setGooglePhotoFailed(true)} />
+<img src={authUser.photoURL} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" referrerPolicy="no-referrer" onError={() => setGooglePhotoFailed(true)} />
 ) : (
 <User className="w-10 h-10 p-2 bg-gray-200 rounded-full text-gray-500 flex-shrink-0" />
 )}
