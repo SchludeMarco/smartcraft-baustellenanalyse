@@ -8,6 +8,15 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.17.0] – 2026-08-12
+
+### Hinzugefügt
+- **App-Logo im Header setzt jetzt die Eingabefelder zurück.** Klick auf das
+  Hammer/Blitz-Icon links im Header (`SmarterCraftLogo` in `App.jsx`) ruft
+  dieselbe `handleReset`-Funktion wie der bestehende „Zurücksetzen"-Button
+  auf — Bild, Problembeschreibung, Analyseergebnis etc. werden geleert, die
+  bestehende Anmeldung (Auth-State) bleibt davon unberührt.
+
 ## [1.16.2] – 2026-08-12
 
 ### Behoben
