@@ -135,6 +135,9 @@ Environment Variables in den Vercel-Projekteinstellungen:
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | client | „ |
 | `VITE_FIREBASE_APP_ID` | client | „ |
 | `VITE_FIREBASE_MEASUREMENT_ID` | client | „ |
+| `RESEND_API_KEY` | server-only | resend.com/api-keys |
+| `SUPPORT_EMAIL` | server-only (fällt auf `VITE_ADMIN_EMAIL` zurück) | eigene Support-Adresse |
+| `RESEND_FROM_EMAIL` | server-only (optional) | eigene verifizierte Domain, siehe resend.com/domains |
 
 ## Bekannte Einschränkungen & Ausblick
 

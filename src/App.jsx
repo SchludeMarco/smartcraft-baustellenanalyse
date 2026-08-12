@@ -17,7 +17,7 @@ getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs,
 orderBy, limit, serverTimestamp
 } from 'firebase/firestore';
 import { firebaseConfig } from './firebaseConfig';
-import { queueErrorReport, flushErrorReports } from './errorReporting';
+import { queueErrorReport, flushErrorReports, setErrorReportingAppCheck } from './errorReporting';
 import AdminPanel from './AdminPanel';
 
 const appId = 'smartcraft-baustellenanalyse';
@@ -312,6 +312,7 @@ appCheckInstance = initializeAppCheck(app, {
 provider: new ReCaptchaV3Provider(recaptchaSiteKey),
 isTokenAutoRefreshEnabled: true,
 });
+setErrorReportingAppCheck(appCheckInstance);
 } catch (e) {
 console.error("App-Check-Initialisierung fehlgeschlagen:", e);
 queueErrorReport('app-check-init', e);

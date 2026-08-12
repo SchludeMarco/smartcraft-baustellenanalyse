@@ -8,6 +8,27 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.14.0] – 2026-08-12
+
+### Hinzugefügt
+- **Automatischer Mail-Versand bei Fehlerreports.** Bisher landete jeder
+  `queueErrorReport`-Aufruf nur in Firestore (`errorReporting.js`) und musste im
+  PIN-geschützten Admin-Bereich (`AdminPanel.jsx`) manuell per `mailto:`-Link
+  weitergeleitet werden — ein Bug fiel also erst auf, wenn jemand aktiv
+  nachschaute. Neue Serverless Function `api/report-bug.js` schickt jetzt
+  sofort, sobald ein Fehler auftritt (`queueErrorReport` ruft im gleichen
+  Zug `sendBugReportEmail` auf, egal ob am PC oder am Smartphone), eine Mail
+  über die Resend-API an die Support-Adresse. Bewusst "fire and forget":
+  Firestore bleibt die verlässliche Quelle (auch offline dank der
+  bestehenden `localStorage`-Warteschlange), die Mail ist nur ein
+  zusätzlicher Sofort-Hinweis und geht bei Netzwerkfehlern spurlos verloren,
+  ohne den Report selbst zu gefährden. Gleiches Fail-open-Muster wie bei
+  `api/gemini.js`: Same-Origin-Check immer aktiv, App Check + Rate-Limiting
+  (5/Minute, 50/Tag pro IP) nur wenn `FIREBASE_SERVICE_ACCOUNT_KEY` gesetzt
+  ist. Neue Env-Variablen `RESEND_API_KEY`, `SUPPORT_EMAIL` (fällt auf
+  `VITE_ADMIN_EMAIL` zurück) und optional `RESEND_FROM_EMAIL` (siehe
+  `.env.example`/README).
+
 ## [1.13.0] – 2026-08-11
 
 ### Hinzugefügt
