@@ -8,6 +8,21 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.22.0] – 2026-08-13
+
+### Geändert
+- **Admin-Bereich: alte Fehlerreports ausblendbar.** Analog zum bestehenden
+  "Gelöste ausblenden"-Filter blendet ein neuer Toggle "Alte ausblenden"
+  (standardmäßig aktiv) Reports aus, deren Zeitstempel mehr als 14 Tage
+  zurückliegt (`src/AdminPanel.jsx`), damit die Liste sich auf aktuelle
+  Fehlerbilder konzentriert.
+- **Fehlersammlung in Firestore geleert.** Die `errorReports`-Collection-Group
+  enthielt 17 größtenteils veraltete Reports (älteste von V1.8.2) über 3
+  Nutzer-Pfade und wurde per `firebase firestore:delete -r` vollständig
+  entfernt. `error_log.md` entsprechend zurückgesetzt und mit Hinweis auf die
+  Löschung versehen (die zuvor dort dokumentierten Fehlerbilder gelten
+  dadurch nicht als behoben, nur die Rohdaten wurden entfernt).
+
 ## [1.21.1] – 2026-08-13
 
 ### Behoben

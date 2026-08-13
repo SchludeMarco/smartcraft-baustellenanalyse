@@ -16,6 +16,9 @@ if (!ADMIN_EMAIL) {
 
 const formatTimestamp = (ms) => (ms ? new Date(ms).toLocaleString('de-DE') : 'Unbekannt');
 
+const OLD_REPORT_THRESHOLD_MS = 14 * 24 * 60 * 60 * 1000;
+const isOldReport = (report) => !report.timestamp || Date.now() - report.timestamp > OLD_REPORT_THRESHOLD_MS;
+
 const buildMailto = (report) => {
   const info = getErrorContextInfo(report.context);
   const subject = `Sm@rtCraft Fehlerreport: ${info.label}`;
@@ -54,6 +57,7 @@ const AdminPanel = ({ db, appId, onClose }) => {
   const [loadError, setLoadError] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
   const [hideResolved, setHideResolved] = useState(true);
+  const [hideOld, setHideOld] = useState(true);
   const [togglingContext, setTogglingContext] = useState(null);
 
   const loadReports = useCallback(async () => {
@@ -154,6 +158,15 @@ const AdminPanel = ({ db, appId, onClose }) => {
               />
               Gelöste ausblenden
             </label>
+            <label className="flex items-center mb-3 flex-shrink-0 text-xs text-gray-600 select-none">
+              <input
+                type="checkbox"
+                checked={hideOld}
+                onChange={(e) => setHideOld(e.target.checked)}
+                className="mr-1.5"
+              />
+              Alte ausblenden (älter als 14 Tage)
+            </label>
             {isLoading ? (
               <div className="flex items-center justify-center flex-grow">
                 <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
@@ -165,12 +178,12 @@ const AdminPanel = ({ db, appId, onClose }) => {
                 <p>Keine Fehlerreports vorhanden.</p>
               </div>
             ) : (() => {
-              const visibleReports = hideResolved
-                ? reports.filter((r) => !resolvedContexts[r.context])
-                : reports;
+              let visibleReports = reports;
+              if (hideResolved) visibleReports = visibleReports.filter((r) => !resolvedContexts[r.context]);
+              if (hideOld) visibleReports = visibleReports.filter((r) => !isOldReport(r));
               return visibleReports.length === 0 ? (
                 <div className="text-center p-8 text-gray-500 flex-grow">
-                  <p>Keine offenen Fehlerreports. Alle Fehlerbilder sind als gelöst markiert.</p>
+                  <p>Keine aktuellen offenen Fehlerreports. Alle passenden Reports sind gelöst oder älter als 14 Tage.</p>
                 </div>
               ) : (
               <ul className="space-y-3 overflow-y-auto flex-grow pr-1">

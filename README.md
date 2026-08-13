@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.21.1)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.22.0)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
