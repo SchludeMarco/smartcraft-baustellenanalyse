@@ -8,6 +8,20 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.19.0] – 2026-08-13
+
+### Hinzugefügt
+- **Umschalter "Kurz"/"Vollständig" für die TTS-Sprachausgabe.** Bisher wurde
+  beim Vorlesen immer der komplette Diagnosetext vorgelesen. Jetzt lässt sich
+  wählen, ob nur die wichtigsten Punkte oder der vollständige Text vorgelesen
+  werden — Standard ist die kurze Version. Die Kurzfassung wird bei Bedarf
+  einmalig per Gemini erzeugt (neue `SYSTEM_INSTRUCTION_TTS_SUMMARY`, max. 5
+  Sätze, reiner Fließtext ohne Markdown) und für den aktuellen Diagnosetext
+  zwischengespeichert (`ttsShortText`), sodass wiederholtes Abspielen keine
+  erneute Anfrage auslöst. Bei neuer Diagnose wird die zwischengespeicherte
+  Kurzfassung verworfen. Während der Erstellung zeigt der Button einen
+  Lade-Spinner ("Kurzfassung wird erstellt…") und ist deaktiviert.
+
 ## [1.18.3] – 2026-08-13
 
 ### Geändert

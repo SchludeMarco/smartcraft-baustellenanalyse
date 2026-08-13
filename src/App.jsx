@@ -34,6 +34,7 @@ const SYSTEM_INSTRUCTION_MATERIAL = "Du bist ein Einkaufsmanager für Handwerksb
 const SYSTEM_INSTRUCTION_SAFETY = "Du bist ein Arbeitsschutz-Experte (Sicherheitstechniker). Analysiere den folgenden Lösungsvorschlag und identifiziere alle potenziellen Risiken. Erstelle eine kurze Liste von Sicherheitstipps und notwendiger persönlicher Schutzausrüstung (PSA). Antworte im Markdown-Format.";
 const SYSTEM_INSTRUCTION_CLIENT_REPORT = "Du bist ein Projektmanager mit ausgezeichneten Kommunikationsfähigkeiten. Nimm die technische Lösung und formuliere eine professionelle, jargonfreie Zusammenfassung für den Endkunden oder Projektleiter. Füge am Ende eine Liste der administrativen nächsten Schritte (z.B. Genehmigungen, Abnahmen) hinzu, die erforderlich sind. Antworte im Markdown-Format.";
 const SYSTEM_INSTRUCTION_VIDEO_FINAL = "Du bist ein YouTube-Experte für Handwerks-Tutorials. Basierend auf dem folgenden Lösungsvorschlag, suche und wähle die 3-5 relevantesten und aktuellsten YouTube-Video-Links aus, die eine visuelle Anleitung zur Reparatur bieten. Ignoriere alle Nicht-YouTube-Links. Antworte AUSSCHLIESSLICH mit einem JSON-Array im Format [{\"title\": \"...\", \"uri\": \"https://www.youtube.com/watch?v=...\"}], ohne zusätzlichen Text davor oder danach.";
+const SYSTEM_INSTRUCTION_TTS_SUMMARY = "Du bist ein erfahrener Handwerksmeister. Fasse die folgende Diagnose und Lösung für eine mündliche Vorlesung auf das Wesentliche zusammen: das Problem und die wichtigsten Lösungsschritte, in maximal 5 kurzen Sätzen. Antworte ausschließlich in reinem Fließtext ohne Markdown, Überschriften oder Aufzählungszeichen, da der Text direkt vorgelesen wird.";
 // JSON Schema für die Materialliste
 const MATERIAL_SCHEMA = {
 type: "ARRAY",
@@ -373,6 +374,17 @@ return localStorage.getItem('smartcraft-tts-gender') === 'female' ? 'female' : '
 return 'male';
 }
 });
+// 'short' liest nur die wichtigsten Punkte vor (KI-generierte Zusammenfassung),
+// 'full' den kompletten Diagnosetext. Standard ist die kurze Version.
+const [ttsMode, setTtsMode] = useState(() => {
+try {
+return localStorage.getItem('smartcraft-tts-mode') === 'full' ? 'full' : 'short';
+} catch {
+return 'short';
+}
+});
+const [ttsShortText, setTtsShortText] = useState(null);
+const [isGeneratingTtsShort, setIsGeneratingTtsShort] = useState(false);
 // Manche Browser (v.a. Chrome) melden Stimmen erst asynchron über
 // "voiceschanged" statt sofort bei getVoices().
 useEffect(() => {
@@ -389,6 +401,17 @@ localStorage.setItem('smartcraft-tts-gender', ttsGender);
 // localStorage kann in privaten/eingeschränkten Kontexten fehlen — Einstellung bleibt dann nur für die Sitzung
 }
 }, [ttsGender]);
+useEffect(() => {
+try {
+localStorage.setItem('smartcraft-tts-mode', ttsMode);
+} catch {
+// localStorage kann in privaten/eingeschränkten Kontexten fehlen — Einstellung bleibt dann nur für die Sitzung
+}
+}, [ttsMode]);
+// Neue Diagnose eingetroffen — eine zuvor generierte Kurzfassung gehört zum alten Text
+useEffect(() => {
+setTtsShortText(null);
+}, [solutionText]);
 // Chrome bricht sehr lange Ansagen nach ca. 15s ab, wenn speechSynthesis
 // nicht regelmäßig "angestupst" wird — bekannter Browser-Bug, daher
 // pause/resume alle 10s während der Wiedergabe.
@@ -411,23 +434,15 @@ ttsUtteranceRef.current = null;
 };
 }, [ttsSupported]);
 const ttsSelectedVoice = useMemo(() => pickGermanVoice(ttsVoices, ttsGender), [ttsVoices, ttsGender]);
-const handleToggleTts = useCallback(() => {
-if (!ttsSupported) return;
-if (isTtsPlaying) {
-window.speechSynthesis.cancel();
-ttsUtteranceRef.current = null;
-setIsTtsPlaying(false);
-return;
-}
-if (!solutionText) return;
-window.speechSynthesis.cancel();
 // Markdown-Reste (Sternchen, Rauten, Aufzählungsstriche) vor dem Vorlesen entfernen
-const plainText = solutionText
+const stripMarkdownForTts = (text) => text
 .replace(/[*_#`]/g, '')
 .replace(/^-\s+/gm, '')
 .replace(/\n{2,}/g, '. ')
 .replace(/\n/g, ' ');
-const utterance = new SpeechSynthesisUtterance(plainText);
+const speakText = useCallback((text) => {
+window.speechSynthesis.cancel();
+const utterance = new SpeechSynthesisUtterance(stripMarkdownForTts(text));
 utterance.lang = 'de-DE';
 if (ttsSelectedVoice) utterance.voice = ttsSelectedVoice;
 utterance.onend = () => {
@@ -441,7 +456,59 @@ ttsUtteranceRef.current = null;
 ttsUtteranceRef.current = utterance;
 window.speechSynthesis.speak(utterance);
 setIsTtsPlaying(true);
-}, [ttsSupported, isTtsPlaying, solutionText, ttsSelectedVoice]);
+}, [ttsSelectedVoice]);
+// Erstellt bei Bedarf eine KI-Kurzfassung der Diagnose (nur die wichtigsten
+// Punkte) und liest sie vor; das Ergebnis wird für den aktuellen Diagnosetext
+// zwischengespeichert, damit nicht bei jedem Abspielen erneut angefragt wird.
+const callGeminiTtsSummaryAPI = useCallback(async () => {
+setIsGeneratingTtsShort(true);
+const payload = {
+contents: [{ parts: [{ text: solutionText }] }],
+systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION_TTS_SUMMARY }] },
+};
+try {
+const response = await fetchWithRetry(apiUrl, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(payload)
+});
+const responseText = await response.text();
+if (!response.ok || !responseText) {
+throw new Error(responseText || `API-Fehler mit Status: ${response.status}`);
+}
+const result = JSON.parse(responseText);
+const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+if (!text) throw new Error("Leere Antwort von der KI.");
+setTtsShortText(text);
+speakText(text);
+} catch (e) {
+console.error("API-Fehler (TTS-Kurzfassung):", e);
+queueErrorReport('gemini-tts-summary-api', e);
+flushErrorReports(db, userId, appId);
+setError("Kurzfassung konnte nicht erstellt werden. Bitte erneut versuchen oder auf 'Vollständig' umschalten.");
+} finally {
+setIsGeneratingTtsShort(false);
+}
+}, [solutionText, speakText, db, userId]);
+const handleToggleTts = useCallback(() => {
+if (!ttsSupported) return;
+if (isTtsPlaying) {
+window.speechSynthesis.cancel();
+ttsUtteranceRef.current = null;
+setIsTtsPlaying(false);
+return;
+}
+if (!solutionText || isGeneratingTtsShort) return;
+if (ttsMode === 'short') {
+if (ttsShortText) {
+speakText(ttsShortText);
+} else {
+callGeminiTtsSummaryAPI();
+}
+} else {
+speakText(solutionText);
+}
+}, [ttsSupported, isTtsPlaying, solutionText, isGeneratingTtsShort, ttsMode, ttsShortText, speakText, callGeminiTtsSummaryAPI]);
 // --- EFFECT: FIREBASE INITIALISIERUNG UND ANONYME ANMELDUNG ---
 useEffect(() => {
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
@@ -1179,12 +1246,41 @@ Lösung und Diagnose
 <button
 type="button"
 onClick={handleToggleTts}
-className="flex items-center px-3 py-2 rounded-lg font-bold text-white shadow-md transition duration-300 text-sm active:scale-[0.98]"
+disabled={isGeneratingTtsShort}
+className="flex items-center px-3 py-2 rounded-lg font-bold text-white shadow-md transition duration-300 text-sm active:scale-[0.98] disabled:opacity-60"
 style={{ backgroundColor: theme.accent }}
 >
-{isTtsPlaying ? <VolumeX className="w-4 h-4 mr-2" /> : <Volume2 className="w-4 h-4 mr-2" />}
-{isTtsPlaying ? 'Vorlesen stoppen' : 'Diagnose vorlesen'}
+{isGeneratingTtsShort ? (
+<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+) : isTtsPlaying ? (
+<VolumeX className="w-4 h-4 mr-2" />
+) : (
+<Volume2 className="w-4 h-4 mr-2" />
+)}
+{isGeneratingTtsShort ? 'Kurzfassung wird erstellt…' : isTtsPlaying ? 'Vorlesen stoppen' : 'Diagnose vorlesen'}
 </button>
+<div className="flex rounded-lg overflow-hidden border border-gray-300 text-xs font-semibold">
+<button
+type="button"
+onClick={() => setTtsMode('short')}
+aria-pressed={ttsMode === 'short'}
+title="Nur die wichtigsten Punkte vorlesen"
+className={`px-3 py-2 transition-colors ${ttsMode === 'short' ? 'text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+style={ttsMode === 'short' ? { backgroundColor: theme.accent } : undefined}
+>
+Kurz
+</button>
+<button
+type="button"
+onClick={() => setTtsMode('full')}
+aria-pressed={ttsMode === 'full'}
+title="Kompletten Diagnosetext vorlesen"
+className={`px-3 py-2 border-l border-gray-300 transition-colors ${ttsMode === 'full' ? 'text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+style={ttsMode === 'full' ? { backgroundColor: theme.accent } : undefined}
+>
+Vollständig
+</button>
+</div>
 <div className="flex rounded-lg overflow-hidden border border-gray-300 text-xs font-semibold">
 <button
 type="button"
@@ -1398,7 +1494,7 @@ Um die Analyse zu starten, benötigen Sie **eines** der folgenden Elemente:
 <p className="text-xs mt-4 text-gray-500">Wählen Sie zuerst Ihr Gewerk (Abschnitt 1) für eine präzisere Diagnose.</p>
 </div>
 );
-}, [isAnalyzing, error, clearError, solutionText, handleExportPdf, materialList, safetyTips, videoLinks, clientReport, isGeneratingMaterials, isGeneratingSafety, isGeneratingVideos, isGeneratingReport, callGeminiMaterialsAPI, callGeminiSafetyAPI, callGeminiVideoSearch, callGeminiClientReportAPI, selectedImageBase64, problemDescription, ttsSupported, isTtsPlaying, ttsGender, ttsSelectedVoice, handleToggleTts, theme]);
+}, [isAnalyzing, error, clearError, solutionText, handleExportPdf, materialList, safetyTips, videoLinks, clientReport, isGeneratingMaterials, isGeneratingSafety, isGeneratingVideos, isGeneratingReport, callGeminiMaterialsAPI, callGeminiSafetyAPI, callGeminiVideoSearch, callGeminiClientReportAPI, selectedImageBase64, problemDescription, ttsSupported, isTtsPlaying, ttsGender, ttsMode, isGeneratingTtsShort, ttsSelectedVoice, handleToggleTts, theme]);
 // Profil-Modal-Komponente (angepasst an Rot/Blau)
 const UserProfileModal = () => {
 const [showProfile, setShowProfile] = useState(false);
