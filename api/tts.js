@@ -1,6 +1,69 @@
+import crypto from 'crypto';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAppCheck } from 'firebase-admin/app-check';
 import { getFirestore } from 'firebase-admin/firestore';
+
+// Vorlesen ist bewusst auf ein einziges Konto beschränkt (Kostenschutz, siehe
+// CHANGELOG) — nur mit diesem Google-Konto angemeldete Nutzer bekommen Audio.
+const ALLOWED_TTS_EMAIL = 'marco.schlude@gmail.com';
+
+// Google-Zertifikate zur ID-Token-Prüfung: öffentlicher, unauthentifizierter
+// Endpunkt — dafür ist kein FIREBASE_SERVICE_ACCOUNT_KEY nötig (das Prüfen
+// eines ID-Tokens erfordert im Gegensatz zum Ausstellen keinen Service-Account,
+// siehe https://firebase.google.com/docs/auth/admin/verify-id-tokens#verify_id_tokens_using_a_third-party_jwt_library).
+const GOOGLE_CERTS_URL = 'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com';
+let certCache = { certs: null, expiresAt: 0 };
+
+async function getGoogleCerts() {
+  if (certCache.certs && Date.now() < certCache.expiresAt) return certCache.certs;
+  const upstream = await fetch(GOOGLE_CERTS_URL);
+  if (!upstream.ok) throw new Error('Google-Zertifikate konnten nicht geladen werden');
+  const certs = await upstream.json();
+  certCache = { certs, expiresAt: Date.now() + 60 * 60 * 1000 };
+  return certs;
+}
+
+function base64UrlToBuffer(str) {
+  return Buffer.from(str.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+}
+
+// Verifiziert Signatur + Standard-Claims eines Firebase-ID-Tokens manuell
+// (RS256 gegen Googles öffentliche Zertifikate). Gibt bei Erfolg die
+// Token-Payload zurück (u.a. email/email_verified), sonst null.
+async function verifyFirebaseIdToken(idToken, projectId) {
+  if (!idToken || !projectId) return null;
+  const parts = idToken.split('.');
+  if (parts.length !== 3) return null;
+  const [headerB64, payloadB64, signatureB64] = parts;
+  let header, payload;
+  try {
+    header = JSON.parse(base64UrlToBuffer(headerB64).toString('utf8'));
+    payload = JSON.parse(base64UrlToBuffer(payloadB64).toString('utf8'));
+  } catch {
+    return null;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  if (header.alg !== 'RS256' || !header.kid) return null;
+  if (payload.iss !== `https://securetoken.google.com/${projectId}`) return null;
+  if (payload.aud !== projectId) return null;
+  if (typeof payload.exp !== 'number' || payload.exp <= now) return null;
+  if (typeof payload.iat !== 'number' || payload.iat > now + 60) return null;
+  if (!payload.sub) return null;
+
+  let certs;
+  try {
+    certs = await getGoogleCerts();
+  } catch {
+    return null;
+  }
+  const cert = certs[header.kid];
+  if (!cert) return null;
+
+  const verifier = crypto.createVerify('RSA-SHA256');
+  verifier.update(`${headerB64}.${payloadB64}`);
+  const isValid = verifier.verify(cert, base64UrlToBuffer(signatureB64));
+  return isValid ? payload : null;
+}
 
 // Google liefert für de-DE-Stimmen durchgängig A=weiblich, B=männlich (gilt
 // für Standard-, WaveNet- und Neural2-Stimmen gleichermaßen). WaveNet klingt
@@ -114,6 +177,18 @@ export default async function handler(req, res) {
   }
   if (!originHost || originHost !== host) {
     res.status(403).json({ error: 'Forbidden' });
+    return;
+  }
+
+  // Vorlesen ist auf ALLOWED_TTS_EMAIL beschränkt — Nachweis über das mit dem
+  // Request mitgeschickte Firebase-ID-Token (Authorization: Bearer <token>),
+  // nicht über eine vom Client behauptete E-Mail-Adresse.
+  const authHeader = req.headers.authorization || '';
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const projectId = process.env.VITE_FIREBASE_PROJECT_ID;
+  const decoded = await verifyFirebaseIdToken(idToken, projectId).catch(() => null);
+  if (!decoded || decoded.email !== ALLOWED_TTS_EMAIL || decoded.email_verified !== true) {
+    res.status(403).json({ error: 'Forbidden: Sprachausgabe ist nur für ein autorisiertes Konto verfügbar' });
     return;
   }
 

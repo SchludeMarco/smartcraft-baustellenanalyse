@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.20.1)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.21.0)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -231,6 +231,12 @@ Environment Variables in den Vercel-Projekteinstellungen:
   Läuft im kostenlosen Kontingent von Google Cloud (Stand: 1 Mio. Zeichen/Monat
   für WaveNet-Stimmen), benötigt aber ein GCP-Projekt mit aktivierter
   Abrechnung und API — siehe `GOOGLE_TTS_API_KEY` in der Env-Var-Tabelle unten.
+  **Als Kostenschutz serverseitig auf ein einziges Google-Konto beschränkt**
+  (`ALLOWED_TTS_EMAIL` in `api/tts.js`): `api/tts.js` verifiziert das
+  mitgeschickte Firebase-ID-Token direkt gegen Googles öffentliche
+  Zertifikate (kein `FIREBASE_SERVICE_ACCOUNT_KEY` nötig) und prüft
+  `email`/`email_verified` daraus. Alle anderen Nutzer — auch mit anderem
+  Google-Konto oder anonym — bekommen `403 Forbidden`.
 - **Google-Sign-In ist optional, nicht Pflicht:** jeder Nutzer startet weiterhin
   sofort anonym (keine Hürde vor der ersten Nutzung) und kann die Sitzung im
   Profil-Menü freiwillig per Google-Konto "aufwerten". Wer das nicht tut, bleibt

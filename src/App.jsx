@@ -8,7 +8,7 @@ Volume2, VolumeX, List, X, Lock
 import { initializeApp } from 'firebase/app';
 import {
 getAuth, signInAnonymously, onAuthStateChanged, signOut,
-GoogleAuthProvider, signInWithPopup, linkWithPopup
+GoogleAuthProvider, signInWithPopup, linkWithPopup, getIdToken
 } from 'firebase/auth';
 import {
 initializeAppCheck, ReCaptchaV3Provider, getToken as getAppCheckToken
@@ -431,19 +431,26 @@ setIsTtsPlaying(true);
 playNext();
 }, []);
 const fetchTtsAudio = useCallback(async (text) => {
+// Vorlesen ist serverseitig auf ein bestimmtes Google-Konto beschränkt
+// (siehe api/tts.js) — dafür muss das Firebase-ID-Token des eingeloggten
+// Nutzers mitgeschickt werden, nicht nur der App-Check-Nachweis.
+const idToken = auth?.currentUser ? await getIdToken(auth.currentUser).catch(() => null) : null;
 const response = await fetchWithRetry(apiTtsUrl, {
 method: 'POST',
-headers: { 'Content-Type': 'application/json' },
+headers: {
+'Content-Type': 'application/json',
+...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+},
 body: JSON.stringify({ text: stripMarkdownForTts(text), gender: ttsGender }),
 });
 const responseText = await response.text();
 if (!response.ok || !responseText) {
-throw new Error(responseText || `TTS-API-Fehler mit Status: ${response.status}`);
+throw new Error(responseText || `TTS-API-Fehler mit Status: ${response.status}`, { cause: response.status });
 }
 const data = JSON.parse(responseText);
 if (!data.audioChunks?.length) throw new Error('Leere Antwort von der TTS-API.');
 return data.audioChunks.map(base64ToBlobUrl);
-}, [ttsGender]);
+}, [ttsGender, auth]);
 const speakText = useCallback(async (text) => {
 const cacheKey = `${ttsMode}:${ttsGender}`;
 const cached = ttsAudioCacheRef.current[cacheKey];
@@ -458,9 +465,14 @@ ttsAudioCacheRef.current[cacheKey] = urls;
 playAudioQueue(urls);
 } catch (e) {
 console.error('API-Fehler (TTS-Synthese):', e);
+if (e.cause === 403) {
+// Erwartete Ablehnung (Konto nicht autorisiert) — kein echter Fehler, daher kein Error-Report.
+setError('Sprachausgabe ist nur für ein autorisiertes Konto verfügbar.');
+} else {
 queueErrorReport('google-tts-api', e);
 flushErrorReports(db, userId, appId);
 setError('Sprachausgabe fehlgeschlagen. Bitte erneut versuchen.');
+}
 } finally {
 setIsTtsLoading(false);
 }

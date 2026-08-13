@@ -8,6 +8,25 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.21.0] – 2026-08-13
+
+### Geändert
+- **TTS-Vorlesen serverseitig auf ein einziges Google-Konto beschränkt.**
+  Nachdem die Sprachausgabe (Google Cloud TTS mit Abrechnungskonto)
+  vorübergehend komplett deaktiviert war, um unkontrollierte Kosten
+  auszuschließen, ist sie jetzt gezielt nur für `marco.schlude@gmail.com`
+  wieder freigeschaltet — alle anderen Nutzer (auch mit anderem Google-Konto
+  oder anonym) bekommen `403 Forbidden`. `api/tts.js` verifiziert dafür das
+  vom Frontend mitgeschickte Firebase-ID-Token direkt gegen Googles
+  öffentliche Zertifikate (RS256-Signaturprüfung, Standard-Claims wie
+  `iss`/`aud`/`exp`) und liest `email`/`email_verified` daraus — bewusst
+  ohne `FIREBASE_SERVICE_ACCOUNT_KEY`, das in Vercel bislang nicht
+  hinterlegt ist. Frontend (`src/App.jsx`, `fetchTtsAudio`) holt dafür per
+  `getIdToken()` ein frisches ID-Token vom eingeloggten Firebase-User und
+  schickt es als `Authorization: Bearer …`-Header mit; eine Ablehnung zeigt
+  jetzt "Sprachausgabe ist nur für ein autorisiertes Konto verfügbar." statt
+  der generischen Fehlermeldung und löst keinen Error-Report aus.
+
 ## [1.20.1] – 2026-08-13
 
 ### Behoben
