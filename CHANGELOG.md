@@ -8,6 +8,26 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.19.1] – 2026-08-13
+
+### Geändert
+- **README auf aktuellen Stand gebracht.** Der Titel-Versionshinweis war seit
+  V1.9.3 nicht mehr nachgezogen worden, obwohl seitdem u.a. Google-Sign-In,
+  Video-Suche, Mail-Versand bei Fehlerreports und TTS dazukamen. Außerdem
+  behoben: die Deployment-Env-Var-Tabelle nannte `FIREBASE_SERVICE_ACCOUNT_KEY`,
+  `VITE_RECAPTCHA_SITE_KEY`, `VITE_ADMIN_PIN` und `VITE_ADMIN_EMAIL` nicht,
+  obwohl sie in `.env.example` längst existieren — ein Deploy allein anhand der
+  README-Tabelle hätte App Check/Rate-Limiting und den Admin-Bereich vergessen;
+  der Tech-Stack-Absatz nannte Tailwind noch als CDN-Variante, obwohl seit
+  V1.8.2 `@tailwindcss/vite` zur Build-Zeit kompiliert; die PDF-Export-Aufzählung
+  nannte die seit V1.10.0 enthaltenen Video-Anleitungen nicht; der TTS-Absatz
+  kannte weder den neuen Kurz/Vollständig-Umschalter noch die männliche
+  Standardstimme. Neuer Abschnitt "Entstehung & technische Hürden" fasst die
+  größten Stolpersteine der Entwicklung zusammen (offener Gemini-Proxy,
+  zwei Modell-Abschaltungen, Firestore-Produktionsmodus, die zwei TTS-Anläufe,
+  Google-Sign-In-Tücken) und verweist für die volle Historie auf
+  `CHANGELOG.md`.
+
 ## [1.19.0] – 2026-08-13
 
 ### Hinzugefügt

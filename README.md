@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.9.3)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.19.1)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -24,6 +24,45 @@ Da die App als reine Web-App im Browser läuft, funktioniert sie genauso gut am
 Desktop — etwa im Büro zur Nachbereitung oder für den Kundenbericht.
 
 Entstanden während der Schulung zum KI-Anwendungsspezialisten.
+
+## Entstehung & technische Hürden
+
+Der erste Prototyp war ein Google-AI-Studio-Canvas-Export — funktional, aber nicht
+eigenständig lauffähig und mit dem API-Key sichtbar im Client-Code. Der erste echte
+Schritt war die Migration zu einem eigenständigen Vite/React-Projekt mit einem
+Vercel-Serverless-Proxy vor der Gemini API, damit der Key server-seitig bleibt.
+Von dort an kamen die Hürden meist erst im Betrieb ans Licht, nicht am Reißbrett:
+
+- **Der Gemini-Proxy war anfangs offen** — jede beliebige Seite hätte ihn
+  ansprechen und echte API-Kosten verursachen können. Origin-Check, Firebase App
+  Check (reCAPTCHA v3) und IP-basiertes Rate-Limiting kamen erst nachträglich
+  dazu, nachdem klar wurde, dass das eigentliche Risiko nicht ein Absturz,
+  sondern eine Kostenexplosion durch automatisierten Missbrauch ist.
+- **Zwei Gemini-Modelle wurden während der Entwicklung abgeschaltet**
+  (`gemini-2.5-flash-preview-09-2025`, danach `gemini-2.5-flash`) — die App lief
+  jeweils plötzlich ins Leere. Seitdem zeigt `gemini-flash-latest` (ein stabiler
+  Alias statt einer festen Versionsnummer) auf das jeweils aktuelle Modell.
+- **Firestore im Produktionsmodus** heißt: standardmäßig alles gesperrt. Ohne die
+  Regeln aus [`firestore.rules`](./firestore.rules) einmal manuell in der Firebase
+  Console zu veröffentlichen, schlug jeder Zugriff mit "Missing or insufficient
+  permissions" fehl — ein Schritt, der sich nicht aus dem Code allein erschließt.
+- **Die Sprachausgabe (TTS) brauchte zwei komplette Anläufe.** Der erste Versuch
+  (serverseitiger Gemini-TTS-Aufruf) scheiterte an einer fehlenden API-Berechtigung
+  (Status 401) und wurde vollständig verworfen. Der zweite, heute aktive Ansatz
+  läuft rein clientseitig über die Web Speech API des Browsers — dabei mussten
+  zwei unabhängige Chrome-Bugs umschifft werden: ein Abbruch nach ca. 15 Sekunden
+  ohne periodisches Pause/Resume als "Keep-Alive", und eine vorzeitige Garbage
+  Collection des `SpeechSynthesisUtterance`-Objekts, die die Ansage ohne jede
+  Fehlermeldung mitten im Satz stoppte.
+- **Google-Sign-In (Account-Linking auf eine bestehende anonyme Sitzung)** brachte
+  eigene, erst in Produktion sichtbare Tücken mit: Firebase liefert `photoURL`
+  nach dem Linking teils nur in `providerData` statt im User-Root-Objekt, und
+  `onAuthStateChanged` gibt nach dem Linking manchmal dasselbe, in-place mutierte
+  User-Objekt zurück — ein einfaches `setAuthUser(user)` löste dadurch per
+  React-Referenzvergleich keinen Re-Render aus.
+
+Die vollständige, chronologische Historie aller Versionen inklusive Problem →
+Ursache → Lösung steht in [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## Für wen ist Sm@rtCraft?
 
@@ -73,8 +112,9 @@ genug, dass auch Laien ihr zuhause folgen können.
   Google-Search-Grounding gefunden
 
 **5. PDF-Export** — der komplette Bericht (Diagnose, Materialliste, Sicherheits-Check,
-Kundenbericht, Foto) lässt sich als druckfertiges PDF exportieren — direkt weitergebbar
-an Kunden, an den Handwerker des Vertrauens oder fürs eigene Archiv.
+Video-Anleitungen, Kundenbericht, Foto) lässt sich als druckfertiges PDF exportieren —
+direkt weitergebbar an Kunden, an den Handwerker des Vertrauens oder fürs eigene
+Archiv.
 
 **6. Verlauf** — jede Analyse wird (anonym, pro Sitzung) in Firestore gespeichert; die
 letzten 20 Analysen lassen sich später erneut aufrufen, ohne Foto oder Beschreibung neu
@@ -97,10 +137,16 @@ App eine Einschätzung, keine Freigabe.
 
 ## Tech-Stack
 
-React 18 + Vite, Tailwind CSS (CDN), Firebase (Anonymous Auth + optionales
-Google-Sign-In + Firestore),
+React 18 + Vite, Tailwind CSS (per `@tailwindcss/vite` zur Build-Zeit kompiliert,
+nicht per CDN), Firebase (Anonymous Auth + optionales Google-Sign-In + Firestore),
 Google Gemini API (`gemini-flash-latest`) über eine Vercel Serverless Function als
 Proxy — der API-Key bleibt dadurch server-seitig und wird nie im Browser sichtbar.
+Der Proxy ist zusätzlich per Origin-Check, Firebase App Check (reCAPTCHA v3) und
+IP-basiertem Rate-Limiting gegen automatisierten Missbrauch abgesichert (siehe
+`api/gemini.js`, Details unten unter "Entstehung & technische Hürden"). Technische
+Fehler (React-Crashes, Firebase-/Gemini-API-Fehler) werden lokal gepuffert, sobald
+online automatisch nach Firestore gemeldet und zusätzlich per Mail zugestellt; ein
+PIN-geschützter Admin-Bereich (`src/AdminPanel.jsx`) fasst sie projektweit zusammen.
 
 ## Lokales Setup
 
@@ -148,6 +194,10 @@ Environment Variables in den Vercel-Projekteinstellungen:
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | client | „ |
 | `VITE_FIREBASE_APP_ID` | client | „ |
 | `VITE_FIREBASE_MEASUREMENT_ID` | client | „ |
+| `FIREBASE_SERVICE_ACCOUNT_KEY` | server-only (optional, aktiviert App Check + Rate-Limiting, sonst fail-open) | Firebase Console → Projekteinstellungen → Dienstkonten |
+| `VITE_RECAPTCHA_SITE_KEY` | client (optional, aktiviert App Check clientseitig) | Firebase Console → App Check → Web-App registrieren |
+| `VITE_ADMIN_PIN` | client (reiner UI-Sichtschutz für `AdminPanel.jsx`, kein echter Zugriffsschutz) | frei wählbar |
+| `VITE_ADMIN_EMAIL` | client | eigene Admin-Adresse |
 | `RESEND_API_KEY` | server-only | resend.com/api-keys |
 | `SUPPORT_EMAIL` | server-only (fällt auf `VITE_ADMIN_EMAIL` zurück) | eigene Support-Adresse |
 | `RESEND_FROM_EMAIL` | server-only (optional) | eigene verifizierte Domain, siehe resend.com/domains |
@@ -160,7 +210,10 @@ Environment Variables in den Vercel-Projekteinstellungen:
   `pickGermanVoice`), bevorzugt dabei automatisch eine "Google"-Stimme, falls der
   Browser eine anbietet, und lässt sich zwischen weiblicher/männlicher Stimme
   umschalten (Heuristik anhand des Stimmennamens, da die Web Speech API selbst
-  kein Geschlecht liefert). Welche Stimmen tatsächlich zur Wahl stehen, hängt vom
+  kein Geschlecht liefert; Standard ist männlich). Ein zweiter Umschalter wählt
+  zwischen "Kurz" (nur die wichtigsten Punkte, per Gemini zusammengefasst und für
+  die aktuelle Diagnose zwischengespeichert — Standard) und "Vollständig" (der
+  komplette Diagnosetext). Welche Stimmen tatsächlich zur Wahl stehen, hängt vom
   Browser/Betriebssystem ab — z.B. bietet Windows nur Microsoft-Stimmen, Chrome mit
   Google-Konto zusätzlich "Google Deutsch".
 - **Google-Sign-In ist optional, nicht Pflicht:** jeder Nutzer startet weiterhin
