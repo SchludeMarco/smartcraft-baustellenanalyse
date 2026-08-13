@@ -25,6 +25,10 @@ const appId = 'smartcraft-baustellenanalyse';
 // Gemini-Aufrufe laufen über eine eigene Serverless-Function (api/gemini.js),
 // damit der API-Key nie im Browser sichtbar ist.
 const apiUrl = '/api/gemini';
+// Sprachausgabe (TTS) läuft über einen eigenen Serverless-Proxy (api/tts.js)
+// zur Google Cloud Text-to-Speech API — gleicher Grund wie bei apiUrl: der
+// API-Key darf nie im Browser sichtbar sein.
+const apiTtsUrl = '/api/tts';
 // Modul-Variable statt React-State, weil fetchWithRetry außerhalb der
 // Komponente liegt und synchron auf die App-Check-Instanz zugreifen muss.
 let appCheckInstance = null;
@@ -78,48 +82,6 @@ const TRADE_ICONS = [
 { name: "Allround-Handwerker", icon: Settings },
 { name: "Sonstig...", icon: MoreHorizontal },
 ];
-// Sprachausgabe (TTS) läuft rein clientseitig über die Web Speech API des
-// Browsers (kein eigener API-Key, keine 401-Probleme wie beim früheren,
-// serverseitigen Anlauf). Chrome/Edge melden über getVoices() zwar oft
-// mehrere deutsche Stimmen (u.a. Windows-"Online (Natural)"-Stimmen), aber
-// nicht alle davon geben in Chrome tatsächlich Ton aus — nur die "Google"-
-// Stimme ist zuverlässig nutzbar. Ein früherer Versuch, für "Männlich" per
-// Namens-Heuristik auf eine andere Stimme umzuschalten, führte deshalb dazu,
-// dass die Ausgabe komplett stumm blieb bzw. die gute Google-Stimme verloren
-// ging. Deshalb bleibt IMMER dieselbe (bekannt funktionierende) Stimme aktiv;
-// das Geschlecht steuert stattdessen nur die Tonhöhe der Utterance.
-const TTS_PITCH_BY_GENDER = { male: 0.75, female: 1.3 };
-// Wählt aus den vom Browser gemeldeten Stimmen die beste deutsche TTS-Stimme:
-// bevorzugt eine Google-Stimme (beste Qualität, in Chrome zuverlässig), sonst
-// irgendeine deutsche, sonst überhaupt eine verfügbare Stimme.
-const pickGermanVoice = (voices) => {
-const germanVoices = voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith('de'));
-const pool = germanVoices.length > 0 ? germanVoices : voices;
-const googleVoices = pool.filter((v) => v.name.toLowerCase().includes('google'));
-return googleVoices[0] || pool[0] || null;
-};
-// Zerlegt einen Text in mundgerechte Häppchen (an Satzenden), damit er als
-// Folge mehrerer kurzer Utterances statt einer einzigen langen vorgelesen
-// wird. Grund: Chrome/Edge brechen sehr lange Einzel-Utterances nach ca. 15s
-// ab (bekannter Browser-Bug) — mehrere kurze, nacheinander in die Warteschlange
-// gegebene Utterances umgehen das zuverlässiger als das bloße periodische
-// pause()/resume() (das auf manchen Windows-Sprachengines die Wiedergabe
-// selbst abwürgt, statt sie fortzusetzen).
-const TTS_CHUNK_MAX_LEN = 200;
-const chunkTextForTts = (text) => {
-const sentences = text.match(/[^.!?]+[.!?]+(\s+|$)|[^.!?]+$/g) || [text];
-const chunks = [];
-let current = '';
-for (const sentence of sentences) {
-if (current && (current.length + sentence.length) > TTS_CHUNK_MAX_LEN) {
-chunks.push(current.trim());
-current = '';
-}
-current += sentence;
-}
-if (current.trim()) chunks.push(current.trim());
-return chunks.length > 0 ? chunks : [text];
-};
 /**
 * Funktion zur Konvertierung einer Datei in Base64 (wird für die API benötigt)
 */
@@ -374,13 +336,17 @@ const [isGeneratingSafety, setIsGeneratingSafety] = useState(false);
 const [isGeneratingVideos, setIsGeneratingVideos] = useState(false);
 const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 // --- TTS (Sprachausgabe) States ---
-const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+// Läuft über einen serverseitigen Proxy (api/tts.js) zur Google Cloud
+// Text-to-Speech API statt über die Web Speech API des Browsers — die
+// browsereigene Lösung erwies sich als unzuverlässig (Abbrüche, gemeldete
+// Stimmen ohne Tonausgabe, kein echter Geschlechtsunterschied). Ein
+// <audio>-Element spielt die vom Server gelieferten MP3-Dateien ab.
 const [isTtsPlaying, setIsTtsPlaying] = useState(false);
-const [ttsVoices, setTtsVoices] = useState([]);
-// Chrome sammelt das SpeechSynthesisUtterance-Objekt per Garbage Collection
-// ein, sobald keine Referenz mehr darauf besteht — dann bricht die Ansage
-// unvermittelt ab. Ref hält es für die Dauer der Wiedergabe am Leben.
-const ttsUtteranceRef = useRef(null);
+const [isTtsLoading, setIsTtsLoading] = useState(false);
+const audioRef = useRef(null);
+// Bereits erzeugte Audiodaten (Object-URLs) je Modus+Geschlecht cachen, damit
+// erneutes Abspielen keine erneute (kostenpflichtige) TTS-Anfrage auslöst.
+const ttsAudioCacheRef = useRef({});
 const [ttsGender, setTtsGender] = useState(() => {
 try {
 return localStorage.getItem('smartcraft-tts-gender') === 'female' ? 'female' : 'male';
@@ -399,15 +365,6 @@ return 'short';
 });
 const [ttsShortText, setTtsShortText] = useState(null);
 const [isGeneratingTtsShort, setIsGeneratingTtsShort] = useState(false);
-// Manche Browser (v.a. Chrome) melden Stimmen erst asynchron über
-// "voiceschanged" statt sofort bei getVoices().
-useEffect(() => {
-if (!ttsSupported) return;
-const loadVoices = () => setTtsVoices(window.speechSynthesis.getVoices());
-loadVoices();
-window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
-return () => window.speechSynthesis.removeEventListener('voiceschanged', loadVoices);
-}, [ttsSupported]);
 useEffect(() => {
 try {
 localStorage.setItem('smartcraft-tts-gender', ttsGender);
@@ -422,50 +379,92 @@ localStorage.setItem('smartcraft-tts-mode', ttsMode);
 // localStorage kann in privaten/eingeschränkten Kontexten fehlen — Einstellung bleibt dann nur für die Sitzung
 }
 }, [ttsMode]);
-// Neue Diagnose eingetroffen — eine zuvor generierte Kurzfassung gehört zum alten Text
+const clearTtsAudioCache = useCallback(() => {
+Object.values(ttsAudioCacheRef.current).flat().forEach((url) => URL.revokeObjectURL(url));
+ttsAudioCacheRef.current = {};
+}, []);
+// Neue Diagnose eingetroffen — eine zuvor generierte Kurzfassung bzw. bereits
+// synthetisierte Audiodaten gehören zum alten Text
 useEffect(() => {
 setTtsShortText(null);
-}, [solutionText]);
+clearTtsAudioCache();
+}, [solutionText, clearTtsAudioCache]);
 // Laufende Sprachausgabe beim Verlassen der Seite/Komponente stoppen
 useEffect(() => {
-if (!ttsSupported) return;
 return () => {
-window.speechSynthesis.cancel();
-ttsUtteranceRef.current = null;
+audioRef.current?.pause();
+clearTtsAudioCache();
 };
-}, [ttsSupported]);
-const ttsSelectedVoice = useMemo(() => pickGermanVoice(ttsVoices), [ttsVoices]);
+}, [clearTtsAudioCache]);
 // Markdown-Reste (Sternchen, Rauten, Aufzählungsstriche) vor dem Vorlesen entfernen
 const stripMarkdownForTts = (text) => text
 .replace(/[*_#`]/g, '')
 .replace(/^-\s+/gm, '')
 .replace(/\n{2,}/g, '. ')
 .replace(/\n/g, ' ');
-const speakText = useCallback((text) => {
-window.speechSynthesis.cancel();
-const pitch = TTS_PITCH_BY_GENDER[ttsGender] ?? 1;
-const utterances = chunkTextForTts(stripMarkdownForTts(text)).map((chunk) => {
-const utterance = new SpeechSynthesisUtterance(chunk);
-utterance.lang = 'de-DE';
-utterance.pitch = pitch;
-if (ttsSelectedVoice) utterance.voice = ttsSelectedVoice;
-return utterance;
-});
-const stop = () => {
-setIsTtsPlaying(false);
-ttsUtteranceRef.current = null;
+const base64ToBlobUrl = (base64) => {
+const binary = atob(base64);
+const bytes = new Uint8Array(binary.length);
+for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+return URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }));
 };
-utterances.forEach((utterance, index) => {
-utterance.onerror = stop;
-if (index === utterances.length - 1) utterance.onend = stop;
-});
-// Referenz auf alle Utterances der Warteschlange halten — sonst sammelt
-// Chrome sie per Garbage Collection ein und die Wiedergabe bricht mitten
-// in der Kette ab.
-ttsUtteranceRef.current = utterances;
-utterances.forEach((utterance) => window.speechSynthesis.speak(utterance));
+// Spielt eine Folge von Audio-URLs nacheinander über dasselbe <audio>-Element ab.
+const playAudioQueue = useCallback((urls) => {
+const audio = audioRef.current;
+if (!audio || urls.length === 0) {
+setIsTtsPlaying(false);
+return;
+}
+let index = 0;
+const playNext = () => {
+if (index >= urls.length) {
+setIsTtsPlaying(false);
+return;
+}
+audio.src = urls[index];
+index += 1;
+audio.play().catch(() => setIsTtsPlaying(false));
+};
+audio.onended = playNext;
+audio.onerror = () => setIsTtsPlaying(false);
 setIsTtsPlaying(true);
-}, [ttsSelectedVoice, ttsGender]);
+playNext();
+}, []);
+const fetchTtsAudio = useCallback(async (text) => {
+const response = await fetchWithRetry(apiTtsUrl, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ text: stripMarkdownForTts(text), gender: ttsGender }),
+});
+const responseText = await response.text();
+if (!response.ok || !responseText) {
+throw new Error(responseText || `TTS-API-Fehler mit Status: ${response.status}`);
+}
+const data = JSON.parse(responseText);
+if (!data.audioChunks?.length) throw new Error('Leere Antwort von der TTS-API.');
+return data.audioChunks.map(base64ToBlobUrl);
+}, [ttsGender]);
+const speakText = useCallback(async (text) => {
+const cacheKey = `${ttsMode}:${ttsGender}`;
+const cached = ttsAudioCacheRef.current[cacheKey];
+if (cached) {
+playAudioQueue(cached);
+return;
+}
+setIsTtsLoading(true);
+try {
+const urls = await fetchTtsAudio(text);
+ttsAudioCacheRef.current[cacheKey] = urls;
+playAudioQueue(urls);
+} catch (e) {
+console.error('API-Fehler (TTS-Synthese):', e);
+queueErrorReport('google-tts-api', e);
+flushErrorReports(db, userId, appId);
+setError('Sprachausgabe fehlgeschlagen. Bitte erneut versuchen.');
+} finally {
+setIsTtsLoading(false);
+}
+}, [ttsMode, ttsGender, fetchTtsAudio, playAudioQueue, db, userId]);
 // Erstellt bei Bedarf eine KI-Kurzfassung der Diagnose (nur die wichtigsten
 // Punkte) und liest sie vor; das Ergebnis wird für den aktuellen Diagnosetext
 // zwischengespeichert, damit nicht bei jedem Abspielen erneut angefragt wird.
@@ -500,14 +499,12 @@ setIsGeneratingTtsShort(false);
 }
 }, [solutionText, speakText, db, userId]);
 const handleToggleTts = useCallback(() => {
-if (!ttsSupported) return;
 if (isTtsPlaying) {
-window.speechSynthesis.cancel();
-ttsUtteranceRef.current = null;
+audioRef.current?.pause();
 setIsTtsPlaying(false);
 return;
 }
-if (!solutionText || isGeneratingTtsShort) return;
+if (!solutionText || isGeneratingTtsShort || isTtsLoading) return;
 if (ttsMode === 'short') {
 if (ttsShortText) {
 speakText(ttsShortText);
@@ -517,7 +514,7 @@ callGeminiTtsSummaryAPI();
 } else {
 speakText(solutionText);
 }
-}, [ttsSupported, isTtsPlaying, solutionText, isGeneratingTtsShort, ttsMode, ttsShortText, speakText, callGeminiTtsSummaryAPI]);
+}, [isTtsPlaying, solutionText, isGeneratingTtsShort, isTtsLoading, ttsMode, ttsShortText, speakText, callGeminiTtsSummaryAPI]);
 // --- EFFECT: FIREBASE INITIALISIERUNG UND ANONYME ANMELDUNG ---
 useEffect(() => {
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
@@ -648,8 +645,7 @@ setIsStartingFreshSession(false);
 }, [auth]);
 // --- FUNKTION: ALLES ZURÜCKSETZEN ---
 const handleReset = useCallback(() => {
-if (ttsSupported) window.speechSynthesis.cancel();
-ttsUtteranceRef.current = null;
+audioRef.current?.pause();
 setIsTtsPlaying(false);
 setSelectedImageBase64(null);
 setProblemDescription('');
@@ -670,7 +666,7 @@ setIsGeneratingReport(false);
 const fileInput = document.getElementById(id);
 if (fileInput) fileInput.value = '';
 });
-}, [ttsSupported]);
+}, []);
 // --- FUNKTION: NUR FEHLERZUSTAND ZURÜCKSETZEN (Bild bleibt erhalten) ---
 const clearError = useCallback(() => {
 setError(null);
@@ -1248,25 +1244,25 @@ Lösung und Diagnose
 {/* Anzeige des Lösungstextes */}
 <div dangerouslySetInnerHTML={{ __html: solutionText.replace(/\n/g, '<br/>') }} />
 </div>
-{/* Sprachausgabe (TTS) — läuft clientseitig über die Web Speech API des Browsers */}
-{ttsSupported ? (
+{/* Sprachausgabe (TTS) — läuft über api/tts.js (Google Cloud Text-to-Speech) */}
 <div className="p-3 bg-gray-50 border-l-4 rounded-lg shadow-md space-y-2" style={{ borderColor: theme.accent }}>
+<audio ref={audioRef} className="hidden" />
 <div className="flex items-center justify-between gap-2 flex-wrap">
 <button
 type="button"
 onClick={handleToggleTts}
-disabled={isGeneratingTtsShort}
+disabled={isGeneratingTtsShort || isTtsLoading}
 className="flex items-center px-3 py-2 rounded-lg font-bold text-white shadow-md transition duration-300 text-sm active:scale-[0.98] disabled:opacity-60"
 style={{ backgroundColor: theme.accent }}
 >
-{isGeneratingTtsShort ? (
+{(isGeneratingTtsShort || isTtsLoading) ? (
 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
 ) : isTtsPlaying ? (
 <VolumeX className="w-4 h-4 mr-2" />
 ) : (
 <Volume2 className="w-4 h-4 mr-2" />
 )}
-{isGeneratingTtsShort ? 'Kurzfassung wird erstellt…' : isTtsPlaying ? 'Vorlesen stoppen' : 'Diagnose vorlesen'}
+{isGeneratingTtsShort ? 'Kurzfassung wird erstellt…' : isTtsLoading ? 'Sprachausgabe wird geladen…' : isTtsPlaying ? 'Vorlesen stoppen' : 'Diagnose vorlesen'}
 </button>
 <div className="flex rounded-lg overflow-hidden border border-gray-300 text-xs font-semibold">
 <button
@@ -1311,18 +1307,10 @@ Männlich
 </button>
 </div>
 </div>
-{ttsSelectedVoice && (
-<p className="text-xs text-gray-500">Stimme: {ttsSelectedVoice.name}</p>
-)}
-</div>
-) : (
-<div className="p-3 bg-gray-100 border-l-4 border-gray-400 text-gray-600 rounded-lg shadow-md flex items-center justify-center">
-<VolumeX className="w-5 h-5 mr-3" />
-<p className="text-sm font-semibold">
-Sprachausgabe wird von diesem Browser nicht unterstützt.
+<p className="text-xs text-gray-500">
+Stimme: Google Cloud TTS (WaveNet, {ttsGender === 'male' ? 'männlich' : 'weiblich'})
 </p>
 </div>
-)}
 {/* 2. Neue LLM-Funktionen (bleiben als 2x2 Grid) */}
 <div className="border-t pt-4 border-gray-100">
 <h3 className="text-lg font-semibold text-gray-700 mb-3">Zusätzliche KI-Tools:</h3>
@@ -1503,7 +1491,7 @@ Um die Analyse zu starten, benötigen Sie **eines** der folgenden Elemente:
 <p className="text-xs mt-4 text-gray-500">Wählen Sie zuerst Ihr Gewerk (Abschnitt 1) für eine präzisere Diagnose.</p>
 </div>
 );
-}, [isAnalyzing, error, clearError, solutionText, handleExportPdf, materialList, safetyTips, videoLinks, clientReport, isGeneratingMaterials, isGeneratingSafety, isGeneratingVideos, isGeneratingReport, callGeminiMaterialsAPI, callGeminiSafetyAPI, callGeminiVideoSearch, callGeminiClientReportAPI, selectedImageBase64, problemDescription, ttsSupported, isTtsPlaying, ttsGender, ttsMode, isGeneratingTtsShort, ttsSelectedVoice, handleToggleTts, theme]);
+}, [isAnalyzing, error, clearError, solutionText, handleExportPdf, materialList, safetyTips, videoLinks, clientReport, isGeneratingMaterials, isGeneratingSafety, isGeneratingVideos, isGeneratingReport, callGeminiMaterialsAPI, callGeminiSafetyAPI, callGeminiVideoSearch, callGeminiClientReportAPI, selectedImageBase64, problemDescription, isTtsPlaying, isTtsLoading, ttsGender, ttsMode, isGeneratingTtsShort, handleToggleTts, theme]);
 // Profil-Modal-Komponente (angepasst an Rot/Blau)
 const UserProfileModal = () => {
 const [showProfile, setShowProfile] = useState(false);

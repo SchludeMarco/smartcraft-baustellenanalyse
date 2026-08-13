@@ -8,6 +8,28 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.20.0] – 2026-08-13
+
+### Geändert
+- **TTS-Sprachausgabe von der Web Speech API des Browsers auf Google Cloud
+  Text-to-Speech umgestellt.** Der Ansatz aus V1.18.x/V1.19.x blieb trotz
+  mehrerer Nachbesserungen unzuverlässig — der Browser meldete teils Stimmen,
+  die gar keinen Ton ausgaben, wodurch der Geschlechts-Umschalter zuletzt nur
+  über eine Tonhöhen-Annäherung auf derselben Stimme lief statt über echte
+  unterschiedliche Stimmen. Neuer serverseitiger Proxy `api/tts.js` (gleiches
+  App-Check-/Rate-Limiting-/Origin-Check-Muster wie `api/gemini.js`, eigene
+  Firestore-Collection `_ttsRateLimits`) ruft die Google Cloud
+  Text-to-Speech API mit echten WaveNet-Stimmen auf (`de-DE-Wavenet-A`
+  weiblich, `-B` männlich), zerlegt dafür lange Diagnosetexte serverseitig an
+  Satzenden in Häppchen unter 5000 Byte (API-Limit pro Anfrage). Frontend
+  spielt die zurückgelieferten MP3-Daten über ein `<audio>`-Element ab und
+  cacht sie pro Modus+Geschlecht (Object-URLs), damit erneutes Abspielen
+  keine erneute, kostenpflichtige Anfrage auslöst. Läuft im kostenlosen
+  Google-Cloud-Kontingent, benötigt aber ein GCP-Projekt mit aktivierter
+  Abrechnung und API sowie einen neuen `GOOGLE_TTS_API_KEY` (siehe README).
+  Der komplette Web-Speech-API-Code (Stimmenauswahl, Tonhöhen-Fallback,
+  Client-seitiges Chunking) wurde entfernt.
+
 ## [1.19.4] – 2026-08-13
 
 ### Geändert
