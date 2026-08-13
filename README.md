@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.19.1)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.19.4)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -50,10 +50,17 @@ Von dort an kamen die Hürden meist erst im Betrieb ans Licht, nicht am Reißbre
   (serverseitiger Gemini-TTS-Aufruf) scheiterte an einer fehlenden API-Berechtigung
   (Status 401) und wurde vollständig verworfen. Der zweite, heute aktive Ansatz
   läuft rein clientseitig über die Web Speech API des Browsers — dabei mussten
-  zwei unabhängige Chrome-Bugs umschifft werden: ein Abbruch nach ca. 15 Sekunden
-  ohne periodisches Pause/Resume als "Keep-Alive", und eine vorzeitige Garbage
-  Collection des `SpeechSynthesisUtterance`-Objekts, die die Ansage ohne jede
-  Fehlermeldung mitten im Satz stoppte.
+  mehrere unabhängige Browser-Eigenheiten umschifft werden: ein Abbruch nach ca.
+  15 Sekunden bei langen Einzel-Utterances (gelöst durch Zerlegen in kurze,
+  nacheinander abgespielte Satz-Häppchen statt eines fragilen periodischen
+  Pause/Resume), eine vorzeitige Garbage Collection des
+  `SpeechSynthesisUtterance`-Objekts, die die Ansage ohne jede Fehlermeldung
+  mitten im Satz stoppte, und die Erkenntnis, dass vom Browser gemeldete Stimmen
+  (`getVoices()`) teils gar keinen Ton ausgeben — ein Versuch, für die
+  Geschlechtsauswahl per Namens-Heuristik auf eine andere gemeldete Stimme
+  umzuschalten, führte prompt zu stummer Wiedergabe. Seitdem bleibt immer die
+  eine bekannt funktionierende Stimme aktiv, das Geschlecht steuert nur die
+  Tonhöhe.
 - **Google-Sign-In (Account-Linking auf eine bestehende anonyme Sitzung)** brachte
   eigene, erst in Produktion sichtbare Tücken mit: Firebase liefert `photoURL`
   nach dem Linking teils nur in `providerData` statt im User-Root-Objekt, und
@@ -208,12 +215,16 @@ Environment Variables in den Vercel-Projekteinstellungen:
   Baustelle, wenn beide Hände beschäftigt sind. Läuft rein clientseitig über die
   Web Speech API des Browsers (kein eigener API-Key nötig, siehe `App.jsx`,
   `pickGermanVoice`), bevorzugt dabei automatisch eine "Google"-Stimme, falls der
-  Browser eine anbietet, und lässt sich zwischen weiblicher/männlicher Stimme
-  umschalten (Heuristik anhand des Stimmennamens, da die Web Speech API selbst
-  kein Geschlecht liefert; Standard ist männlich). Ein zweiter Umschalter wählt
-  zwischen "Kurz" (nur die wichtigsten Punkte, per Gemini zusammengefasst und für
-  die aktuelle Diagnose zwischengespeichert — Standard) und "Vollständig" (der
-  komplette Diagnosetext). Welche Stimmen tatsächlich zur Wahl stehen, hängt vom
+  Browser eine anbietet — diese eine Stimme bleibt bewusst immer aktiv, da manche
+  vom Browser gemeldeten Systemstimmen (z.B. Windows "Online (Natural)") in Chrome
+  gelistet werden, aber keinen Ton ausgeben. Weiblich/männlich lässt sich trotzdem
+  umschalten, allerdings über die Tonhöhe (`TTS_PITCH_BY_GENDER`) statt über einen
+  Stimmenwechsel, da die Web Speech API selbst kein Geschlecht liefert; Standard ist
+  männlich. Ein zweiter Umschalter wählt zwischen "Kurz" (nur die wichtigsten Punkte,
+  per Gemini zusammengefasst und für die aktuelle Diagnose zwischengespeichert —
+  Standard) und "Vollständig" (der komplette Diagnosetext, dafür in Satz-Häppchen
+  zerlegt und als Utterance-Kette abgespielt, um den ca. 15s-Abbruch-Bug bei langen
+  Einzel-Utterances zu umgehen). Welche Stimme tatsächlich läuft, hängt vom
   Browser/Betriebssystem ab — z.B. bietet Windows nur Microsoft-Stimmen, Chrome mit
   Google-Konto zusätzlich "Google Deutsch".
 - **Google-Sign-In ist optional, nicht Pflicht:** jeder Nutzer startet weiterhin

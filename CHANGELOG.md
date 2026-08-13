@@ -8,6 +8,20 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.19.4] – 2026-08-13
+
+### Geändert
+- **README-Pflege in `CLAUDE.md` verbindlich gemacht.** Der Versionshinweis im
+  README-Titel und der TTS-Absatz waren wiederholt hinter dem tatsächlichen
+  Stand zurückgeblieben (zuletzt: V1.19.1 im Titel, TTS-Absatz beschrieb noch
+  die per Namens-Heuristik wechselnde Stimme statt der aktuellen
+  Tonhöhen-Lösung aus V1.19.3). `CLAUDE.md` bekommt dafür einen eigenen
+  README-Abschnitt (Titel-Version, Feature-/Tech-Stack-Beschreibung,
+  Env-Var-Tabelle, "Entstehung & technische Hürden") und einen zusätzlichen
+  Pflichtschritt im "Automatisches Commit & Push"-Ablauf, der die
+  README-Prüfung vor jedem Commit verlangt statt sie optional zu belassen.
+  README.md selbst auf V1.19.4 und den aktuellen TTS-Stand nachgezogen.
+
 ## [1.19.3] – 2026-08-13
 
 ### Behoben
