@@ -57,6 +57,10 @@ neu als offener Eintrag dokumentieren.
   Fix erstellt wurde und keine Status-/Detailinfo enthält — bei erneutem
   Auftreten liefert der nächste Report jetzt genug Detail, um direkt
   einzugrenzen (401/403/429/500/502).
+- **2. Auftreten:** 13.8.2026, 16:07 Uhr, weiterhin App-Version 1.22.1 —
+  nur 46s nach Push des Fixes (Commit `1ce4104`, 16:06:30 Uhr), Client lief
+  also noch auf dem alten Vercel-Deploy vor dem Rollout. Kein Hinweis auf
+  Wirkungslosigkeit des Fixes, weiterhin dieselbe unbekannte Root Cause.
 
 ---
 
