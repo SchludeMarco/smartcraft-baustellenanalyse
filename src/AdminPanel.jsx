@@ -3,11 +3,15 @@ import { Lock, Bug, Mail, X, Loader2, ChevronDown, ChevronUp, RefreshCw, CheckCi
 import { fetchAllErrorReports, fetchResolvedContexts, setContextResolved, getErrorContextInfo } from './errorReporting';
 
 const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN;
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'marco.schlude@gmail.com';
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
 if (!ADMIN_PIN) {
   // Kein Blocker, aber ohne PIN lässt sich der Admin-Bereich nie entsperren.
   console.warn('VITE_ADMIN_PIN ist nicht gesetzt – Admin-Bereich bleibt gesperrt.');
+}
+if (!ADMIN_EMAIL) {
+  // Kein Blocker, aber ohne Adresse bleibt der Mailto-Link im Bug-Report leer.
+  console.warn('VITE_ADMIN_EMAIL ist nicht gesetzt – Mailto-Link im Admin-Bereich fehlt.');
 }
 
 const formatTimestamp = (ms) => (ms ? new Date(ms).toLocaleString('de-DE') : 'Unbekannt');

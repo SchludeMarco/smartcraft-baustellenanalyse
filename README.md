@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.21.0)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.21.1)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -196,6 +196,7 @@ Environment Variables in den Vercel-Projekteinstellungen:
 |---|---|---|
 | `GEMINI_API_KEY` | server-only (kein `VITE_`-Prefix) | aistudio.google.com/apikey |
 | `GOOGLE_TTS_API_KEY` | server-only | Google Cloud Console → APIs & Dienste → Anmeldedaten (Cloud Text-to-Speech API muss aktiviert sein, Abrechnungskonto erforderlich) |
+| `ALLOWED_TTS_EMAIL` | server-only | einzige Google-Konto-E-Mail, für die Vorlesen freigeschaltet ist — ohne diese Variable lehnt `api/tts.js` alle Anfragen ab |
 | `VITE_FIREBASE_API_KEY` | client (öffentlich vorgesehen) | Firebase-Projekteinstellungen → Meine Apps |
 | `VITE_FIREBASE_AUTH_DOMAIN` | client | „ |
 | `VITE_FIREBASE_PROJECT_ID` | client | „ |
@@ -232,7 +233,8 @@ Environment Variables in den Vercel-Projekteinstellungen:
   für WaveNet-Stimmen), benötigt aber ein GCP-Projekt mit aktivierter
   Abrechnung und API — siehe `GOOGLE_TTS_API_KEY` in der Env-Var-Tabelle unten.
   **Als Kostenschutz serverseitig auf ein einziges Google-Konto beschränkt**
-  (`ALLOWED_TTS_EMAIL` in `api/tts.js`): `api/tts.js` verifiziert das
+  (`ALLOWED_TTS_EMAIL`, siehe Env-Var-Tabelle — bewusst als Variable statt
+  Klartext im Repo, da es öffentlich ist): `api/tts.js` verifiziert das
   mitgeschickte Firebase-ID-Token direkt gegen Googles öffentliche
   Zertifikate (kein `FIREBASE_SERVICE_ACCOUNT_KEY` nötig) und prüft
   `email`/`email_verified` daraus. Alle anderen Nutzer — auch mit anderem

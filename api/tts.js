@@ -5,7 +5,9 @@ import { getFirestore } from 'firebase-admin/firestore';
 
 // Vorlesen ist bewusst auf ein einziges Konto beschränkt (Kostenschutz, siehe
 // CHANGELOG) — nur mit diesem Google-Konto angemeldete Nutzer bekommen Audio.
-const ALLOWED_TTS_EMAIL = 'marco.schlude@gmail.com';
+// Bewusst als Env-Var statt Klartext im (öffentlichen) Repo, siehe README.
+// Fehlt die Var, schlägt der E-Mail-Vergleich unten immer fehl (fail-closed).
+const ALLOWED_TTS_EMAIL = process.env.ALLOWED_TTS_EMAIL;
 
 // Google-Zertifikate zur ID-Token-Prüfung: öffentlicher, unauthentifizierter
 // Endpunkt — dafür ist kein FIREBASE_SERVICE_ACCOUNT_KEY nötig (das Prüfen

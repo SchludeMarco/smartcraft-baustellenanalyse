@@ -8,14 +8,31 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.21.1] – 2026-08-13
+
+### Behoben
+- **Private Google-Konto-Adresse stand im Klartext im (öffentlichen) Repo
+  und im Client-Bundle.** `ALLOWED_TTS_EMAIL` aus V1.21.0 war als Literal
+  direkt in `api/tts.js` hinterlegt — für jeden auf GitHub einsehbar, da das
+  Repo public ist. Zusätzlich enthielt `src/AdminPanel.jsx` seit Längerem
+  denselben Klartext als Fallback-Default für `VITE_ADMIN_EMAIL`, der damit
+  im ausgelieferten JS-Bundle landete (per Browser-Devtools auslesbar).
+  `api/tts.js` liest die Adresse jetzt aus der neuen Env-Var
+  `ALLOWED_TTS_EMAIL` (server-only, siehe README), der Fallback in
+  `AdminPanel.jsx` ist entfernt (nur noch `VITE_ADMIN_EMAIL`, mit Warnung im
+  Log, falls die Variable fehlt). Ältere CHANGELOG-Einträge, die die Adresse
+  im Klartext nannten, wurden nachträglich anonymisiert. Die tatsächliche
+  Konfiguration in Vercel (Production/Preview) und der lokalen `.env` bleibt
+  unverändert — nur der Klartext im versionierten Code fällt weg.
+
 ## [1.21.0] – 2026-08-13
 
 ### Geändert
 - **TTS-Vorlesen serverseitig auf ein einziges Google-Konto beschränkt.**
   Nachdem die Sprachausgabe (Google Cloud TTS mit Abrechnungskonto)
   vorübergehend komplett deaktiviert war, um unkontrollierte Kosten
-  auszuschließen, ist sie jetzt gezielt nur für `marco.schlude@gmail.com`
-  wieder freigeschaltet — alle anderen Nutzer (auch mit anderem Google-Konto
+  auszuschließen, ist sie jetzt gezielt nur für das per `ALLOWED_TTS_EMAIL`
+  konfigurierte Admin-Konto wieder freigeschaltet — alle anderen Nutzer (auch mit anderem Google-Konto
   oder anonym) bekommen `403 Forbidden`. `api/tts.js` verifiziert dafür das
   vom Frontend mitgeschickte Firebase-ID-Token direkt gegen Googles
   öffentliche Zertifikate (RS256-Signaturprüfung, Standard-Claims wie
@@ -461,7 +478,7 @@ demselben Versionsstand.
   App-Version, User-Agent sowie eine statische Ursache-/Lösungshilfe je
   bekanntem Fehlerkontext (`ERROR_CONTEXT_INFO` in `errorReporting.js`). Ein
   Button je Eintrag öffnet einen vorausgefüllten `mailto:`-Link (Ziel via
-  `VITE_ADMIN_EMAIL`, Default `marco.schlude@gmail.com`) mit allen Details,
+  `VITE_ADMIN_EMAIL`) mit allen Details,
   damit der Fehler direkt an den Admin gemeldet werden kann.
   **Sicherheitshinweis:** Der PIN (`VITE_ADMIN_PIN`) ist reiner UI-Sichtschutz
   und landet im Client-Bundle. Damit die Collection-Group-Query technisch
