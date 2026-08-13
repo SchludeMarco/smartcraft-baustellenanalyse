@@ -80,43 +80,23 @@ const TRADE_ICONS = [
 ];
 // Sprachausgabe (TTS) läuft rein clientseitig über die Web Speech API des
 // Browsers (kein eigener API-Key, keine 401-Probleme wie beim früheren,
-// serverseitigen Anlauf). Chrome/Edge liefern dabei bevorzugt "Google"-Stimmen
-// aus — die API selbst kennt aber kein Geschlecht, nur den Stimmennamen, daher
-// die Heuristik unten anhand bekannter Stimmennamen der gängigen Engines.
-const TTS_FEMALE_NAME_HINTS = [
-'katja', 'anna', 'petra', 'vicki', 'marlene', 'helena', 'sabine', 'ingrid', 'hedda',
-'amala', 'christa', 'elke', 'gisela', 'klarissa', 'louisa', 'maja', 'seraphina', 'tanja',
-'female', 'weiblich',
-];
-const TTS_MALE_NAME_HINTS = [
-'stefan', 'markus', 'conrad', 'yannick', 'klaus', 'hans', 'ralf',
-'bernd', 'kasper', 'florian', 'reiner',
-'male', 'männlich',
-];
-const ttsVoiceMatchesGender = (voice, gender) => {
-const name = voice.name.toLowerCase();
-const hints = gender === 'male' ? TTS_MALE_NAME_HINTS : TTS_FEMALE_NAME_HINTS;
-return hints.some((hint) => name.includes(hint));
-};
+// serverseitigen Anlauf). Chrome/Edge melden über getVoices() zwar oft
+// mehrere deutsche Stimmen (u.a. Windows-"Online (Natural)"-Stimmen), aber
+// nicht alle davon geben in Chrome tatsächlich Ton aus — nur die "Google"-
+// Stimme ist zuverlässig nutzbar. Ein früherer Versuch, für "Männlich" per
+// Namens-Heuristik auf eine andere Stimme umzuschalten, führte deshalb dazu,
+// dass die Ausgabe komplett stumm blieb bzw. die gute Google-Stimme verloren
+// ging. Deshalb bleibt IMMER dieselbe (bekannt funktionierende) Stimme aktiv;
+// das Geschlecht steuert stattdessen nur die Tonhöhe der Utterance.
+const TTS_PITCH_BY_GENDER = { male: 0.75, female: 1.3 };
 // Wählt aus den vom Browser gemeldeten Stimmen die beste deutsche TTS-Stimme:
-// bevorzugt eine Google-Stimme passend zum gewünschten Geschlecht, sonst eine
-// beliebige deutsche Stimme mit passendem Geschlecht, sonst irgendeine
-// Google- bzw. deutsche bzw. überhaupt verfügbare Stimme. Manche Browser/Systeme
-// (z.B. Chrome ohne installierte deutsche Systemstimmen) melden aber nur eine
-// einzige deutsche Stimme — dann lässt sich per Name kein Geschlecht matchen.
-// "genderMatched" zeigt das an, damit der Aufrufer per Tonhöhe nachhelfen kann,
-// statt dass der Umschalter wirkungslos bleibt.
-const pickGermanVoice = (voices, gender) => {
+// bevorzugt eine Google-Stimme (beste Qualität, in Chrome zuverlässig), sonst
+// irgendeine deutsche, sonst überhaupt eine verfügbare Stimme.
+const pickGermanVoice = (voices) => {
 const germanVoices = voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith('de'));
 const pool = germanVoices.length > 0 ? germanVoices : voices;
 const googleVoices = pool.filter((v) => v.name.toLowerCase().includes('google'));
-const matched = (
-googleVoices.find((v) => ttsVoiceMatchesGender(v, gender)) ||
-pool.find((v) => ttsVoiceMatchesGender(v, gender)) ||
-null
-);
-const voice = matched || googleVoices[0] || pool[0] || null;
-return { voice, genderMatched: !!matched };
+return googleVoices[0] || pool[0] || null;
 };
 // Zerlegt einen Text in mundgerechte Häppchen (an Satzenden), damit er als
 // Folge mehrerer kurzer Utterances statt einer einzigen langen vorgelesen
@@ -454,7 +434,7 @@ window.speechSynthesis.cancel();
 ttsUtteranceRef.current = null;
 };
 }, [ttsSupported]);
-const ttsSelectedVoice = useMemo(() => pickGermanVoice(ttsVoices, ttsGender), [ttsVoices, ttsGender]);
+const ttsSelectedVoice = useMemo(() => pickGermanVoice(ttsVoices), [ttsVoices]);
 // Markdown-Reste (Sternchen, Rauten, Aufzählungsstriche) vor dem Vorlesen entfernen
 const stripMarkdownForTts = (text) => text
 .replace(/[*_#`]/g, '')
@@ -463,17 +443,12 @@ const stripMarkdownForTts = (text) => text
 .replace(/\n/g, ' ');
 const speakText = useCallback((text) => {
 window.speechSynthesis.cancel();
-const { voice, genderMatched } = ttsSelectedVoice;
-// Wenn der Browser keine Stimme mit passendem Geschlecht meldet (z.B. weil
-// nur eine einzige deutsche Stimme installiert ist), bewirkt der Umschalter
-// sonst gar nichts hörbares — per Tonhöhe wird der Unterschied trotzdem
-// wahrnehmbar.
-const pitch = genderMatched ? 1 : (ttsGender === 'male' ? 0.75 : 1.3);
+const pitch = TTS_PITCH_BY_GENDER[ttsGender] ?? 1;
 const utterances = chunkTextForTts(stripMarkdownForTts(text)).map((chunk) => {
 const utterance = new SpeechSynthesisUtterance(chunk);
 utterance.lang = 'de-DE';
 utterance.pitch = pitch;
-if (voice) utterance.voice = voice;
+if (ttsSelectedVoice) utterance.voice = ttsSelectedVoice;
 return utterance;
 });
 const stop = () => {
@@ -1336,11 +1311,8 @@ Männlich
 </button>
 </div>
 </div>
-{ttsSelectedVoice.voice && (
-<p className="text-xs text-gray-500">
-Stimme: {ttsSelectedVoice.voice.name}
-{!ttsSelectedVoice.genderMatched && ' (keine passende Stimme gefunden, Tonhöhe angepasst)'}
-</p>
+{ttsSelectedVoice && (
+<p className="text-xs text-gray-500">Stimme: {ttsSelectedVoice.name}</p>
 )}
 </div>
 ) : (

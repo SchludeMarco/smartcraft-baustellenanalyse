@@ -8,6 +8,24 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.19.3] – 2026-08-13
+
+### Behoben
+- **"Männlich" blieb weiterhin wirkungslos, dazu wurde die gute Google-Stimme
+  verloren.** Ursache des V1.19.2-Fixes: Wenn für "Männlich" per Namens-
+  Heuristik eine passende deutsche Stimme im gesamten Stimmen-Pool gefunden
+  wurde (nicht nur unter den Google-Stimmen), wechselte `pickGermanVoice` auf
+  diese — z.B. eine von Windows gemeldete "Online (Natural)"-Stimme, die in
+  Chrome zwar aufgelistet wird, aber keinen Ton ausgibt. Das ersetzte
+  zugleich die bisher zuverlässig funktionierende "Google Deutsch"-Stimme.
+  `pickGermanVoice` wählt jetzt wieder **immer** dieselbe, bekannt
+  funktionierende Stimme (Google, falls vorhanden) unabhängig vom
+  gewählten Geschlecht — die Namens-Heuristik (`TTS_*_NAME_HINTS`,
+  `ttsVoiceMatchesGender`) entfällt komplett. Das Geschlecht wirkt sich
+  stattdessen ausschließlich über `utterance.pitch` aus (männlich 0.75,
+  weiblich 1.3, `TTS_PITCH_BY_GENDER`), was auf jeder Engine zuverlässig
+  hörbar ist und nie zu Stille führen kann.
+
 ## [1.19.2] – 2026-08-13
 
 ### Behoben
