@@ -266,7 +266,7 @@ title="Eingaben zurücksetzen"
 className="appearance-none block relative w-10 h-10 p-0 m-0 leading-none rounded-full focus:outline-none focus:ring-2 focus:ring-white/70"
 >
 {/* Basis: Hammer */}
-<Hammer className="absolute w-full h-full text-white/90" />
+<Hammer className="absolute inset-0 w-full h-full text-white/90" />
 {/* Overlay: Blitz (Smart-Aspekt), leicht versetzt und hervorgehoben */}
 <Zap className="absolute w-5 h-5 bottom-0 right-0 transform translate-x-1 translate-y-1 text-yellow-300 fill-yellow-300 shadow-md" />
 </button>

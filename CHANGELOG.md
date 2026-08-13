@@ -8,6 +8,18 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.20.1] – 2026-08-13
+
+### Behoben
+- **App-Logo im Header hing sichtbar tiefer als der Titel-Schriftzug.** Das
+  Hammer-Icon im Logo (`SmarterCraftLogo`) war per `absolute w-full h-full`
+  positioniert, aber ohne explizites `top-0`/`left-0`. Ohne festgelegten
+  Ankerpunkt berechnet der Browser dafür eine Fallback-Position
+  ("static position"), die das Icon um exakt die halbe eigene Höhe nach unten
+  verschob — es überlappte sichtbar den Untertitel unter dem Header. Fix:
+  `inset-0` statt der reinen Größenklassen, damit das Icon exakt auf der
+  `relative`-Box des Buttons sitzt und auf gleicher Höhe wie der Titel steht.
+
 ## [1.20.0] – 2026-08-13
 
 ### Geändert
