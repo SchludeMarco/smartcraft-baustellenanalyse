@@ -8,6 +8,19 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.22.1] – 2026-08-13
+
+### Dokumentation
+- **`error_log.md`: `gemini-vision-api`-Fehlerbild neu als offen
+  dokumentiert.** Per Admin-Bereich gemeldeter Fehler "Fehler bei der
+  KI-Anfrage oder leere Antwort." (13.8.2026, V1.22.0) ist dasselbe
+  Fehlerbild, das beim Firestore-Cleanup in V1.22.0 aus der Sammlung
+  entfernt, aber nie als behoben bestätigt wurde. `src/App.jsx` wirft diese
+  Meldung generisch für jeden `!response.ok`-Fall von `/api/gemini`
+  (App-Check-, Origin-, Rate-Limit- oder Upstream-Fehler) sowie leere
+  Antworten — ohne Vercel-Logs zum Report-Zeitpunkt lässt sich die konkrete
+  Ursache nicht eingrenzen. Nur Dokumentation, kein Code geändert.
+
 ## [1.22.0] – 2026-08-13
 
 ### Geändert

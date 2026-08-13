@@ -30,9 +30,29 @@ neu als offener Eintrag dokumentieren.
 
 ## Offene Fehler
 
-_Aktuell keine — Sammlung wurde am 2026-08-13 geleert, siehe Hinweis oben.
-Neue Reports über den Admin-Bereich hier eintragen, sobald sich ein
-wiederkehrendes Muster zeigt._
+### 1. gemini-vision-api: "Fehler bei der KI-Anfrage oder leere Antwort."
+
+- **Status:** Offen
+- **Kontext:** `gemini-vision-api` (Hauptanalyse, `callGeminiVisionAPI` in
+  `src/App.jsx`)
+- **Zeitpunkt/Version:** 13.8.2026, 15:58 Uhr, V1.22.0, Android/Chrome Mobile
+- **Nachricht:** "Fehler bei der KI-Anfrage oder leere Antwort."
+- **Vermutliche Ursache:** Dieses Fehlerbild trat bereits 4× zwischen
+  V1.8.2–V1.10.0 auf (siehe CHANGELOG `[1.14.1]`) und wurde beim
+  Firestore-Cleanup am 2026-08-13 **nicht** als behoben bestätigt, sondern
+  nur aus der Sammlung entfernt. `src/App.jsx:828-831` wirft diese generische
+  Meldung sowohl bei leerer Antwort als auch bei jedem `!response.ok` von
+  `/api/gemini` — d.h. sie deckt gleichermaßen App-Check-Fehler (401),
+  Origin-Check (403, `api/gemini.js:92`), Rate-Limit (429), fehlenden
+  `GEMINI_API_KEY` (500) und Upstream-Fehler von Gemini selbst (502/4xx) ab.
+  Ohne Vercel-Logs zum konkreten Report-Zeitpunkt lässt sich die genaue
+  Ursache von hier aus nicht eingrenzen.
+- **Lösungsansatz:** Vercel-Logs für `/api/gemini` um 13.8.2026 15:58 Uhr
+  prüfen (welcher HTTP-Status kam zurück?), `GEMINI_API_KEY`-Gültigkeit/
+  -Kontingent kontrollieren. Falls sich häufiger wiederholt: Erwägen, die
+  echte Fehlerursache (Status/Meldung von `/api/gemini`) statt der
+  generischen Meldung an den Client durchzureichen, um künftige Reports
+  aussagekräftiger zu machen.
 
 ---
 
