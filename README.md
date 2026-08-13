@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.22.3)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.22.4)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -68,6 +68,13 @@ Von dort an kamen die Hürden meist erst im Betrieb ans Licht, nicht am Reißbre
   `onAuthStateChanged` gibt nach dem Linking manchmal dasselbe, in-place mutierte
   User-Objekt zurück — ein einfaches `setAuthUser(user)` löste dadurch per
   React-Referenzvergleich keinen Re-Render aus.
+- **Fotos direkt von Smartphone-Kameras sprengten das Vercel-Payload-Limit.**
+  Bilder wurden unkomprimiert als Base64 an `/api/gemini` geschickt; ein
+  typisches 5-12MB-Handyfoto wird dadurch (+33% durch die Base64-Kodierung)
+  zuverlässig größer als das harte, nicht konfigurierbare 4,5MB-Limit von
+  Vercel Serverless Functions — sichtbar als `FUNCTION_PAYLOAD_TOO_LARGE`.
+  Bilder werden jetzt vor dem Versand clientseitig per Canvas auf max. 1600px
+  Kantenlänge herunterskaliert und als JPEG neu kodiert.
 
 Die vollständige, chronologische Historie aller Versionen inklusive Problem →
 Ursache → Lösung steht in [`CHANGELOG.md`](./CHANGELOG.md).

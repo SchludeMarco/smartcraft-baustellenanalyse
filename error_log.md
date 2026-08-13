@@ -30,44 +30,36 @@ neu als offener Eintrag dokumentieren.
 
 ## Offene Fehler
 
-### 1. gemini-vision-api: "Fehler bei der KI-Anfrage oder leere Antwort."
-
-- **Status:** Offen
-- **Kontext:** `gemini-vision-api` (Hauptanalyse, `callGeminiVisionAPI` in
-  `src/App.jsx`)
-- **Zeitpunkt/Version:** 13.8.2026, 15:58 Uhr, V1.22.0, Android/Chrome Mobile
-- **Nachricht:** "Fehler bei der KI-Anfrage oder leere Antwort."
-- **Vermutliche Ursache:** Dieses Fehlerbild trat bereits 4× zwischen
-  V1.8.2–V1.10.0 auf (siehe CHANGELOG `[1.14.1]`) und wurde beim
-  Firestore-Cleanup am 2026-08-13 **nicht** als behoben bestätigt, sondern
-  nur aus der Sammlung entfernt. `src/App.jsx:828-831` wirft diese generische
-  Meldung sowohl bei leerer Antwort als auch bei jedem `!response.ok` von
-  `/api/gemini` — d.h. sie deckt gleichermaßen App-Check-Fehler (401),
-  Origin-Check (403, `api/gemini.js:92`), Rate-Limit (429), fehlenden
-  `GEMINI_API_KEY` (500) und Upstream-Fehler von Gemini selbst (502/4xx) ab.
-  Ohne Vercel-Logs zum konkreten Report-Zeitpunkt lässt sich die genaue
-  Ursache von hier aus nicht eingrenzen.
-- **Lösungsansatz:** Vercel-Logs für `/api/gemini` um 13.8.2026 15:58 Uhr
-  prüfen (welcher HTTP-Status kam zurück?), `GEMINI_API_KEY`-Gültigkeit/
-  -Kontingent kontrollieren.
-- **Update (V1.22.2):** Die generische Client-Fehlermeldung wurde durch die
-  tatsächliche Server-Antwort (Status/Fehlertext von `/api/gemini`) ersetzt
-  (siehe CHANGELOG `[1.22.2]`). Die eigentliche Root Cause dieses konkreten
-  Reports vom 13.8.2026 bleibt aber offen, da der Report selbst vor diesem
-  Fix erstellt wurde und keine Status-/Detailinfo enthält — bei erneutem
-  Auftreten liefert der nächste Report jetzt genug Detail, um direkt
-  einzugrenzen (401/403/429/500/502).
-- **2. Auftreten:** 13.8.2026, 16:07 Uhr, weiterhin App-Version 1.22.1 —
-  nur 46s nach Push des Fixes (Commit `1ce4104`, 16:06:30 Uhr), Client lief
-  also noch auf dem alten Vercel-Deploy vor dem Rollout. Kein Hinweis auf
-  Wirkungslosigkeit des Fixes, weiterhin dieselbe unbekannte Root Cause.
+_Aktuell keine offenen Einträge._
 
 ---
 
 ## Gelöste Fehler
 
-_Noch keine Einträge — sobald ein Fehler behoben ist, hierher verschieben und
-mit Lösung + Versionsverweis ergänzen, siehe Vorlage unten._
+### 1. gemini-vision-api: "Fehler bei der KI-Anfrage oder leere Antwort." / FUNCTION_PAYLOAD_TOO_LARGE
+
+- **Status:** Gelöst (V1.22.4)
+- **Kontext:** `gemini-vision-api` (Hauptanalyse, `callGeminiVisionAPI` in
+  `src/App.jsx`)
+- **Nachricht:** Ursprünglich generisch "Fehler bei der KI-Anfrage oder leere
+  Antwort." (3× zwischen 13.8.2026 15:58–16:07 Uhr, V1.22.0/1.22.1, sowie 4×
+  zwischen V1.8.2–V1.10.0, siehe CHANGELOG `[1.14.1]`). Nach dem Error-
+  Passthrough-Fix in V1.22.2 zeigte der nächste Report (13.8.2026, 16:17 Uhr,
+  V1.22.3) den echten Fehler: `Request Entity Too Large` /
+  `FUNCTION_PAYLOAD_TOO_LARGE`.
+- **Ursache:** Vercel Serverless Functions haben ein hartes, nicht
+  konfigurierbares Payload-Limit von 4,5MB. Bilder wurden unkomprimiert per
+  `fileToBase64()` als Base64 an `/api/gemini` geschickt — ein
+  5-12MB-Handyfoto (üblich bei modernen Android-Kameras, siehe User-Agent in
+  den Reports) wird durch die Base64-Kodierung (+33%) zuverlässig größer als
+  das Limit.
+- **Lösung:** `fileToBase64()` skaliert Bilder jetzt vor dem Senden per
+  Canvas auf max. 1600px Kantenlänge herunter und kodiert sie als JPEG
+  (Qualität 0,82) neu; siehe CHANGELOG `[1.22.4]`. Zusätzlich wurde die
+  generische Fehlermeldung selbst in V1.22.2 durch die tatsächliche
+  Server-Antwort ersetzt (CHANGELOG `[1.22.2]`) — dieser Fix war die
+  Voraussetzung dafür, die Root Cause überhaupt aus einem Report ablesen zu
+  können.
 
 <!--
 ### N. Kurzbeschreibung

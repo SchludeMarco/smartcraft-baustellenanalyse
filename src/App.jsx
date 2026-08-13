@@ -83,13 +83,37 @@ const TRADE_ICONS = [
 { name: "Sonstig...", icon: MoreHorizontal },
 ];
 /**
-* Funktion zur Konvertierung einer Datei in Base64 (wird für die API benötigt)
+* Funktion zur Konvertierung einer Datei in Base64 (wird für die API benötigt).
+* Skaliert dabei über Canvas auf max. 1600px Kantenlänge herunter und
+* kodiert als JPEG neu, weil Vercel-Serverless-Functions (/api/gemini) ein
+* hartes, nicht konfigurierbares Payload-Limit von 4,5MB haben — unkomprimierte
+* Handyfotos (oft 5-12MB) sprengen das nach Base64-Inflation (+33%) zuverlässig
+* (siehe error_log.md, FUNCTION_PAYLOAD_TOO_LARGE).
 */
+const MAX_IMAGE_DIMENSION = 1600;
+const IMAGE_JPEG_QUALITY = 0.82;
 const fileToBase64 = (file) => {
 return new Promise((resolve, reject) => {
 const reader = new FileReader();
 reader.readAsDataURL(file);
-reader.onload = () => resolve(reader.result.split(',')[1]);
+reader.onload = () => {
+const img = new window.Image();
+img.onload = () => {
+let { width, height } = img;
+if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+const scale = MAX_IMAGE_DIMENSION / Math.max(width, height);
+width = Math.round(width * scale);
+height = Math.round(height * scale);
+}
+const canvas = document.createElement('canvas');
+canvas.width = width;
+canvas.height = height;
+canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+resolve(canvas.toDataURL('image/jpeg', IMAGE_JPEG_QUALITY).split(',')[1]);
+};
+img.onerror = () => reject(new Error('Bild konnte nicht dekodiert werden.'));
+img.src = reader.result;
+};
 reader.onerror = (error) => reject(error);
 });
 };
@@ -702,8 +726,8 @@ if (file) {
 handleReset();
 setError(null);
 try {
-if (file.size > 5 * 1024 * 1024) {
-setError("Das Bild ist zu groß (max. 5MB).");
+if (file.size > 20 * 1024 * 1024) {
+setError("Das Bild ist zu groß (max. 20MB).");
 return;
 }
 const base64 = await fileToBase64(file);

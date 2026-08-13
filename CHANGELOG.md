@@ -8,6 +8,31 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.22.4] – 2026-08-13
+
+### Behoben
+- **Root Cause für `gemini-vision-api`-Fehler gefunden und behoben:
+  `FUNCTION_PAYLOAD_TOO_LARGE`.** Dank des verbesserten Error-Passthroughs
+  aus `[1.22.2]` enthielt der nächste Report (16:17 Uhr) erstmals den echten
+  Fehler statt der generischen Meldung: Vercel Serverless Functions haben
+  ein hartes, nicht konfigurierbares Payload-Limit von 4,5MB. Bilder wurden
+  bisher unkomprimiert per `fileToBase64()` als Base64 an `/api/gemini`
+  geschickt — ein 5-12MB-Handyfoto (üblich bei modernen Android-Kameras)
+  wird durch die Base64-Kodierung (+33%) zuverlässig größer als das Limit.
+  `fileToBase64()` in `src/App.jsx` skaliert Bilder jetzt vor dem Senden per
+  Canvas auf max. 1600px Kantenlänge herunter und kodiert sie als JPEG
+  (Qualität 0,82) neu; die Roh-Datei-Obergrenze im Upload-Dialog wurde von
+  5MB auf 20MB angehoben, da nicht mehr die Rohdatei, sondern das
+  komprimierte Ergebnis versendet wird. Per Playwright-Test verifiziert:
+  ein synthetisches 6,4MB-Rauschbild wurde auf ~930KB reduziert (86%
+  kleiner), Vorschau blieb intakt, keine Konsolenfehler.
+- **Beim Testen entdeckt: `new Image()` griff auf die falsche `Image`.**
+  `src/App.jsx` importiert bereits ein Lucide-Icon namens `Image` (Zeile 3),
+  das den globalen `Image`-Konstruktor im Modul-Scope überschattet —
+  `new Image()` in der neuen Resize-Logik warf dadurch zur Laufzeit "Image
+  is not a constructor" (baute aber fehlerfrei, da syntaktisch gültig). Fix:
+  explizit `new window.Image()`.
+
 ## [1.22.3] – 2026-08-13
 
 ### Dokumentation
