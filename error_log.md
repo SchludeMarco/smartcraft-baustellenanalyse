@@ -49,10 +49,14 @@ neu als offener Eintrag dokumentieren.
   Ursache von hier aus nicht eingrenzen.
 - **Lösungsansatz:** Vercel-Logs für `/api/gemini` um 13.8.2026 15:58 Uhr
   prüfen (welcher HTTP-Status kam zurück?), `GEMINI_API_KEY`-Gültigkeit/
-  -Kontingent kontrollieren. Falls sich häufiger wiederholt: Erwägen, die
-  echte Fehlerursache (Status/Meldung von `/api/gemini`) statt der
-  generischen Meldung an den Client durchzureichen, um künftige Reports
-  aussagekräftiger zu machen.
+  -Kontingent kontrollieren.
+- **Update (V1.22.2):** Die generische Client-Fehlermeldung wurde durch die
+  tatsächliche Server-Antwort (Status/Fehlertext von `/api/gemini`) ersetzt
+  (siehe CHANGELOG `[1.22.2]`). Die eigentliche Root Cause dieses konkreten
+  Reports vom 13.8.2026 bleibt aber offen, da der Report selbst vor diesem
+  Fix erstellt wurde und keine Status-/Detailinfo enthält — bei erneutem
+  Auftreten liefert der nächste Report jetzt genug Detail, um direkt
+  einzugrenzen (401/403/429/500/502).
 
 ---
 

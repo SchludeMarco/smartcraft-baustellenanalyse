@@ -828,7 +828,7 @@ const responseText = await response.text();
 if (!response.ok || !responseText) {
 const errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
 console.error("API Response Fehler:", errorMsg);
-throw new Error("Fehler bei der KI-Anfrage oder leere Antwort.");
+throw new Error(errorMsg);
 }
 let result;
 try {
@@ -883,7 +883,7 @@ const responseText = await response.text();
 if (!response.ok || !responseText) {
 const errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
 console.error("API Response Fehler:", errorMsg);
-throw new Error("Fehler bei der Materialanfrage oder leere Antwort.");
+throw new Error(errorMsg);
 }
 let result;
 try {
@@ -934,7 +934,7 @@ const responseText = await response.text();
 if (!response.ok || !responseText) {
 const errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
 console.error("API Response Fehler:", errorMsg);
-throw new Error("Fehler bei der Sicherheitsanfrage oder leere Antwort.");
+throw new Error(errorMsg);
 }
 let result;
 try {
@@ -978,7 +978,7 @@ const responseText = await response.text();
 if (!response.ok || !responseText) {
 const errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
 console.error("API Response Fehler:", errorMsg);
-throw new Error("Fehler bei der Berichtsanfrage oder leere Antwort.");
+throw new Error(errorMsg);
 }
 let result;
 try {
@@ -1026,7 +1026,7 @@ const callGeminiVideoSearch = useCallback(async () => {
     if (!response.ok || !responseText) {
       const errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
       console.error("API Response Fehler:", errorMsg);
-      throw new Error("Fehler bei der Video-Anfrage oder leere Antwort.");
+      throw new Error(errorMsg);
     }
     let result;
     try {

@@ -8,6 +8,23 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.22.2] – 2026-08-13
+
+### Behoben
+- **Fehlermeldungen bei Gemini-Anfragen verschluckten die echte Ursache.**
+  `callGeminiVisionAPI`, `callGeminiMaterialsAPI`, `callGeminiSafetyAPI`,
+  `callGeminiClientReportAPI` und `callGeminiVideoSearch` in `src/App.jsx`
+  ermittelten bei einem `!response.ok`/leeren Response bereits die konkrete
+  Fehlermeldung (`errorMsg`, geloggt per `console.error`), warfen dann aber
+  eine hartkodierte generische Meldung ("... oder leere Antwort.") statt
+  `errorMsg` — dadurch enthielten Error-Reports (Admin-Bereich, Mail,
+  `error_log.md`) nie den tatsächlichen HTTP-Status oder die
+  Server-Fehlermeldung von `/api/gemini`. Jetzt wird `errorMsg` geworfen,
+  analog zum bereits korrekten Verhalten von `fetchTtsAudio`/
+  `callGeminiTtsSummaryAPI`. Auslöser: erneut aufgetretener
+  `gemini-vision-api`-Report vom 13.8.2026 (siehe `error_log.md`), dessen
+  Ursache sich mangels Detail in der Fehlermeldung nicht eingrenzen ließ.
+
 ## [1.22.1] – 2026-08-13
 
 ### Dokumentation
