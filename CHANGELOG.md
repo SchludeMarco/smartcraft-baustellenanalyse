@@ -8,6 +8,14 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.18.3] – 2026-08-13
+
+### Geändert
+- **Standardstimme der TTS-Sprachausgabe auf männlich umgestellt.** Beim
+  ersten Aufruf (ohne gespeicherte Präferenz in `localStorage`) wählt
+  `ttsGender` jetzt `'male'` statt `'female'` als Vorgabe; eine bereits
+  getroffene Nutzer-Wahl bleibt wie gehabt erhalten.
+
 ## [1.18.2] – 2026-08-13
 
 ### Behoben

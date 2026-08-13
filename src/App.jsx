@@ -368,9 +368,9 @@ const [ttsVoices, setTtsVoices] = useState([]);
 const ttsUtteranceRef = useRef(null);
 const [ttsGender, setTtsGender] = useState(() => {
 try {
-return localStorage.getItem('smartcraft-tts-gender') === 'male' ? 'male' : 'female';
+return localStorage.getItem('smartcraft-tts-gender') === 'female' ? 'female' : 'male';
 } catch {
-return 'female';
+return 'male';
 }
 });
 // Manche Browser (v.a. Chrome) melden Stimmen erst asynchron über
