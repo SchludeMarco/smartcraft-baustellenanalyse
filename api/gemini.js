@@ -14,6 +14,13 @@ const RATE_LIMIT_MAX_PER_WINDOW = 12;
 const RATE_LIMIT_DAY_MS = 24 * 60 * 60 * 1000;
 const RATE_LIMIT_MAX_PER_DAY = 200;
 
+// Demo-Kontingent: anders als die beiden Fenster oben läuft dieser Zähler nie
+// zurück — er deckelt, wie oft dieselbe IP diesen Endpoint INSGESAMT nutzen
+// darf. Gedacht für den öffentlichen (z.B. LinkedIn-)Link ohne Login: einzelne
+// Besucher können die App voll ausprobieren, aber niemand betreibt sie
+// dauerhaft kostenlos über den eigenen Account weiter.
+const DEMO_LIFETIME_MAX = 30;
+
 // Lazy-Init: Admin-App nur aufbauen, wenn ein Service-Account hinterlegt ist.
 // Ohne FIREBASE_SERVICE_ACCOUNT_KEY bleiben App Check/Rate-Limiting aus
 // (fail-open), damit der Endpoint nach dem Deploy nicht bricht, bevor die
@@ -49,6 +56,9 @@ async function verifyAppCheck(req, app) {
 // Fixed-Window-Zähler pro IP in Firestore (_rateLimits/{ip}), atomar per
 // Transaktion aktualisiert. Diese Collection ist nicht in firestore.rules
 // erwähnt und damit für das Client-SDK automatisch unerreichbar (Default-Deny).
+// Liefert neben "allowed" auch "demoExceeded", damit der Handler das
+// Demo-Kontingent (dauerhaft) von normalem Burst-Throttling (temporär)
+// unterscheiden und jeweils passend antworten kann.
 async function checkRateLimit(app, ip) {
   const db = getFirestore(app);
   const ref = db.collection('_rateLimits').doc(ip);
@@ -56,7 +66,7 @@ async function checkRateLimit(app, ip) {
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     const data = snap.exists ? snap.data() : {};
-    let { minuteStart = 0, minuteCount = 0, dayStart = 0, dayCount = 0 } = data;
+    let { minuteStart = 0, minuteCount = 0, dayStart = 0, dayCount = 0, lifetimeCount = 0 } = data;
     if (now - minuteStart > RATE_LIMIT_WINDOW_MS) {
       minuteStart = now;
       minuteCount = 0;
@@ -67,9 +77,11 @@ async function checkRateLimit(app, ip) {
     }
     minuteCount += 1;
     dayCount += 1;
-    const allowed = minuteCount <= RATE_LIMIT_MAX_PER_WINDOW && dayCount <= RATE_LIMIT_MAX_PER_DAY;
-    tx.set(ref, { minuteStart, minuteCount, dayStart, dayCount }, { merge: true });
-    return allowed;
+    lifetimeCount += 1;
+    const demoExceeded = lifetimeCount > DEMO_LIFETIME_MAX;
+    const withinWindows = minuteCount <= RATE_LIMIT_MAX_PER_WINDOW && dayCount <= RATE_LIMIT_MAX_PER_DAY;
+    tx.set(ref, { minuteStart, minuteCount, dayStart, dayCount, lifetimeCount }, { merge: true });
+    return { allowed: withinWindows && !demoExceeded, demoExceeded };
   });
 }
 
@@ -104,9 +116,18 @@ export default async function handler(req, res) {
       return;
     }
     const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
-    const withinLimit = await checkRateLimit(app, ip);
-    if (!withinLimit) {
-      res.status(429).json({ error: 'Too many requests' });
+    const { allowed, demoExceeded } = await checkRateLimit(app, ip);
+    if (!allowed) {
+      if (demoExceeded) {
+        // 403 statt 429: fetchWithRetry im Client behandelt 429 als
+        // vorübergehend und wiederholt automatisch — das Demo-Kontingent ist
+        // aber endgültig aufgebraucht, ein Retry würde nur unnötig warten.
+        res.status(403).json({
+          error: `Demo-Kontingent erreicht: Diese öffentliche Vorschau ist auf ${DEMO_LIFETIME_MAX} KI-Anfragen pro Besucher begrenzt. Danke fürs Ausprobieren!`,
+        });
+      } else {
+        res.status(429).json({ error: 'Too many requests' });
+      }
       return;
     }
   } else {

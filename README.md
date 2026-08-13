@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.22.4)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.23.0)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -38,6 +38,13 @@ Von dort an kamen die Hürden meist erst im Betrieb ans Licht, nicht am Reißbre
   Check (reCAPTCHA v3) und IP-basiertes Rate-Limiting kamen erst nachträglich
   dazu, nachdem klar wurde, dass das eigentliche Risiko nicht ein Absturz,
   sondern eine Kostenexplosion durch automatisierten Missbrauch ist.
+- **Für den öffentlichen Demo-Link (z.B. LinkedIn) reichte das Rate-Limiting
+  allein nicht** — 200 Anfragen/Tag sind pro IP dauerhaft nutzbar, nicht nur
+  einmalig zum Ausprobieren. Ergänzend zählt derselbe Firestore-Zähler jetzt
+  auch lebenslang pro IP mit (`lifetimeCount`) und blockt ab `DEMO_LIFETIME_MAX`
+  (30) mit einer eigenen, nicht wiederholbaren 403-Antwort statt des üblichen
+  429 — der Client versucht 429 automatisch erneut, ein aufgebrauchtes
+  Demo-Kontingent soll aber sofort und mit Klartext-Meldung enden.
 - **Zwei Gemini-Modelle wurden während der Entwicklung abgeschaltet**
   (`gemini-2.5-flash-preview-09-2025`, danach `gemini-2.5-flash`) — die App lief
   jeweils plötzlich ins Leere. Seitdem zeigt `gemini-flash-latest` (ein stabiler
@@ -156,9 +163,10 @@ React 18 + Vite, Tailwind CSS (per `@tailwindcss/vite` zur Build-Zeit kompiliert
 nicht per CDN), Firebase (Anonymous Auth + optionales Google-Sign-In + Firestore),
 Google Gemini API (`gemini-flash-latest`) über eine Vercel Serverless Function als
 Proxy — der API-Key bleibt dadurch server-seitig und wird nie im Browser sichtbar.
-Der Proxy ist zusätzlich per Origin-Check, Firebase App Check (reCAPTCHA v3) und
-IP-basiertem Rate-Limiting gegen automatisierten Missbrauch abgesichert (siehe
-`api/gemini.js`, Details unten unter "Entstehung & technische Hürden"). Technische
+Der Proxy ist zusätzlich per Origin-Check, Firebase App Check (reCAPTCHA v3),
+IP-basiertem Rate-Limiting und einem dauerhaften Demo-Kontingent (30 KI-Anfragen
+pro IP, siehe `DEMO_LIFETIME_MAX` in `api/gemini.js`) gegen automatisierten
+Missbrauch abgesichert (Details unten unter "Entstehung & technische Hürden"). Technische
 Fehler (React-Crashes, Firebase-/Gemini-API-Fehler) werden lokal gepuffert, sobald
 online automatisch nach Firestore gemeldet und zusätzlich per Mail zugestellt; ein
 PIN-geschützter Admin-Bereich (`src/AdminPanel.jsx`) fasst sie projektweit zusammen.

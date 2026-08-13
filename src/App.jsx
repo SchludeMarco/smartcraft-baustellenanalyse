@@ -850,7 +850,14 @@ body: JSON.stringify(payload)
 // Robuste Verarbeitung der JSON-Antwort
 const responseText = await response.text();
 if (!response.ok || !responseText) {
-const errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
+// Server-Fehler (z.B. Demo-Kontingent, Rate-Limit) kommen als {"error": "..."} —
+// nur die Klartext-Message anzeigen statt des rohen JSON-Strings.
+let errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
+try {
+errorMsg = JSON.parse(responseText)?.error || errorMsg;
+} catch {
+// kein JSON (z.B. Netzwerkfehler-Text) -> Rohtext beibehalten
+}
 console.error("API Response Fehler:", errorMsg);
 throw new Error(errorMsg);
 }
@@ -905,7 +912,14 @@ body: JSON.stringify(payload)
 });
 const responseText = await response.text();
 if (!response.ok || !responseText) {
-const errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
+// Server-Fehler (z.B. Demo-Kontingent, Rate-Limit) kommen als {"error": "..."} —
+// nur die Klartext-Message anzeigen statt des rohen JSON-Strings.
+let errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
+try {
+errorMsg = JSON.parse(responseText)?.error || errorMsg;
+} catch {
+// kein JSON (z.B. Netzwerkfehler-Text) -> Rohtext beibehalten
+}
 console.error("API Response Fehler:", errorMsg);
 throw new Error(errorMsg);
 }
@@ -956,7 +970,14 @@ body: JSON.stringify(payload)
 });
 const responseText = await response.text();
 if (!response.ok || !responseText) {
-const errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
+// Server-Fehler (z.B. Demo-Kontingent, Rate-Limit) kommen als {"error": "..."} —
+// nur die Klartext-Message anzeigen statt des rohen JSON-Strings.
+let errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
+try {
+errorMsg = JSON.parse(responseText)?.error || errorMsg;
+} catch {
+// kein JSON (z.B. Netzwerkfehler-Text) -> Rohtext beibehalten
+}
 console.error("API Response Fehler:", errorMsg);
 throw new Error(errorMsg);
 }
@@ -1000,7 +1021,14 @@ body: JSON.stringify(payload)
 });
 const responseText = await response.text();
 if (!response.ok || !responseText) {
-const errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
+// Server-Fehler (z.B. Demo-Kontingent, Rate-Limit) kommen als {"error": "..."} —
+// nur die Klartext-Message anzeigen statt des rohen JSON-Strings.
+let errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
+try {
+errorMsg = JSON.parse(responseText)?.error || errorMsg;
+} catch {
+// kein JSON (z.B. Netzwerkfehler-Text) -> Rohtext beibehalten
+}
 console.error("API Response Fehler:", errorMsg);
 throw new Error(errorMsg);
 }
@@ -1048,7 +1076,14 @@ const callGeminiVideoSearch = useCallback(async () => {
     });
     const responseText = await response.text();
     if (!response.ok || !responseText) {
-      const errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
+      // Server-Fehler (z.B. Demo-Kontingent, Rate-Limit) kommen als {"error": "..."} —
+      // nur die Klartext-Message anzeigen statt des rohen JSON-Strings.
+      let errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
+      try {
+        errorMsg = JSON.parse(responseText)?.error || errorMsg;
+      } catch {
+        // kein JSON (z.B. Netzwerkfehler-Text) -> Rohtext beibehalten
+      }
       console.error("API Response Fehler:", errorMsg);
       throw new Error(errorMsg);
     }

@@ -8,6 +8,24 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.23.0] – 2026-08-13
+
+### Hinzugefügt
+- **Serverseitiges Demo-Kontingent für `/api/gemini`.** Bisher lief das
+  bestehende IP-basierte Rate-Limiting (12/Minute, 200/Tag) nach jedem
+  Fenster automatisch zurück — für den öffentlich geteilten Vercel-Link
+  (z.B. LinkedIn) hätte damit jede IP dauerhaft kostenpflichtige Anfragen
+  stellen können. Der bestehende Firestore-Zähler pro IP (`_rateLimits/{ip}`)
+  führt jetzt zusätzlich einen nie zurückgesetzten `lifetimeCount`; ab
+  `DEMO_LIFETIME_MAX` (30 Anfragen, siehe `api/gemini.js`) antwortet der
+  Endpoint mit `403` statt `429` und einer Klartext-Meldung
+  ("Demo-Kontingent erreicht ..."). Bewusst `403` statt `429`: `fetchWithRetry`
+  in `src/App.jsx` wiederholt 429/5xx automatisch mit Backoff, ein
+  aufgebrauchtes Demo-Kontingent ist aber endgültig und soll nicht erst
+  drei Retries lang hängen. Zusätzlich zeigen alle Gemini-Aufrufstellen in
+  `src/App.jsx` jetzt die vom Server gelieferte `error`-Klartextmeldung an,
+  statt den rohen JSON-Antworttext in die Fehlermeldung einzubetten.
+
 ## [1.22.4] – 2026-08-13
 
 ### Behoben
