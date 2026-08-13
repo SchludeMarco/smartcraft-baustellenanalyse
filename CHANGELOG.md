@@ -8,6 +8,16 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.22.3] – 2026-08-13
+
+### Dokumentation
+- **`error_log.md`: zweites `gemini-vision-api`-Auftreten vermerkt.** Report
+  von 16:07 Uhr, noch auf V1.22.1 — lief 46s nach Push des Fixes aus
+  `[1.22.2]` noch auf dem alten Vercel-Deploy vor dem Rollout, daher kein
+  Hinweis auf Wirkungslosigkeit des Fixes. Root Cause weiterhin offen, bis
+  ein Report mit V1.22.2+ mehr Detail liefert. Nur Dokumentation, kein Code
+  geändert.
+
 ## [1.22.2] – 2026-08-13
 
 ### Behoben
