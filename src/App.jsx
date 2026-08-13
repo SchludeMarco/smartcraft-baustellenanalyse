@@ -83,8 +83,16 @@ const TRADE_ICONS = [
 // serverseitigen Anlauf). Chrome/Edge liefern dabei bevorzugt "Google"-Stimmen
 // aus — die API selbst kennt aber kein Geschlecht, nur den Stimmennamen, daher
 // die Heuristik unten anhand bekannter Stimmennamen der gängigen Engines.
-const TTS_FEMALE_NAME_HINTS = ['katja', 'anna', 'petra', 'vicki', 'marlene', 'helena', 'sabine', 'ingrid', 'hedda', 'female', 'weiblich'];
-const TTS_MALE_NAME_HINTS = ['stefan', 'markus', 'conrad', 'yannick', 'klaus', 'hans', 'ralf', 'male', 'männlich'];
+const TTS_FEMALE_NAME_HINTS = [
+'katja', 'anna', 'petra', 'vicki', 'marlene', 'helena', 'sabine', 'ingrid', 'hedda',
+'amala', 'christa', 'elke', 'gisela', 'klarissa', 'louisa', 'maja', 'seraphina', 'tanja',
+'female', 'weiblich',
+];
+const TTS_MALE_NAME_HINTS = [
+'stefan', 'markus', 'conrad', 'yannick', 'klaus', 'hans', 'ralf',
+'bernd', 'kasper', 'florian', 'reiner',
+'male', 'männlich',
+];
 const ttsVoiceMatchesGender = (voice, gender) => {
 const name = voice.name.toLowerCase();
 const hints = gender === 'male' ? TTS_MALE_NAME_HINTS : TTS_FEMALE_NAME_HINTS;
@@ -93,18 +101,44 @@ return hints.some((hint) => name.includes(hint));
 // Wählt aus den vom Browser gemeldeten Stimmen die beste deutsche TTS-Stimme:
 // bevorzugt eine Google-Stimme passend zum gewünschten Geschlecht, sonst eine
 // beliebige deutsche Stimme mit passendem Geschlecht, sonst irgendeine
-// Google- bzw. deutsche bzw. überhaupt verfügbare Stimme.
+// Google- bzw. deutsche bzw. überhaupt verfügbare Stimme. Manche Browser/Systeme
+// (z.B. Chrome ohne installierte deutsche Systemstimmen) melden aber nur eine
+// einzige deutsche Stimme — dann lässt sich per Name kein Geschlecht matchen.
+// "genderMatched" zeigt das an, damit der Aufrufer per Tonhöhe nachhelfen kann,
+// statt dass der Umschalter wirkungslos bleibt.
 const pickGermanVoice = (voices, gender) => {
 const germanVoices = voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith('de'));
 const pool = germanVoices.length > 0 ? germanVoices : voices;
 const googleVoices = pool.filter((v) => v.name.toLowerCase().includes('google'));
-return (
+const matched = (
 googleVoices.find((v) => ttsVoiceMatchesGender(v, gender)) ||
 pool.find((v) => ttsVoiceMatchesGender(v, gender)) ||
-googleVoices[0] ||
-pool[0] ||
 null
 );
+const voice = matched || googleVoices[0] || pool[0] || null;
+return { voice, genderMatched: !!matched };
+};
+// Zerlegt einen Text in mundgerechte Häppchen (an Satzenden), damit er als
+// Folge mehrerer kurzer Utterances statt einer einzigen langen vorgelesen
+// wird. Grund: Chrome/Edge brechen sehr lange Einzel-Utterances nach ca. 15s
+// ab (bekannter Browser-Bug) — mehrere kurze, nacheinander in die Warteschlange
+// gegebene Utterances umgehen das zuverlässiger als das bloße periodische
+// pause()/resume() (das auf manchen Windows-Sprachengines die Wiedergabe
+// selbst abwürgt, statt sie fortzusetzen).
+const TTS_CHUNK_MAX_LEN = 200;
+const chunkTextForTts = (text) => {
+const sentences = text.match(/[^.!?]+[.!?]+(\s+|$)|[^.!?]+$/g) || [text];
+const chunks = [];
+let current = '';
+for (const sentence of sentences) {
+if (current && (current.length + sentence.length) > TTS_CHUNK_MAX_LEN) {
+chunks.push(current.trim());
+current = '';
+}
+current += sentence;
+}
+if (current.trim()) chunks.push(current.trim());
+return chunks.length > 0 ? chunks : [text];
 };
 /**
 * Funktion zur Konvertierung einer Datei in Base64 (wird für die API benötigt)
@@ -412,19 +446,6 @@ localStorage.setItem('smartcraft-tts-mode', ttsMode);
 useEffect(() => {
 setTtsShortText(null);
 }, [solutionText]);
-// Chrome bricht sehr lange Ansagen nach ca. 15s ab, wenn speechSynthesis
-// nicht regelmäßig "angestupst" wird — bekannter Browser-Bug, daher
-// pause/resume alle 10s während der Wiedergabe.
-useEffect(() => {
-if (!isTtsPlaying || !ttsSupported) return;
-const keepAlive = setInterval(() => {
-if (window.speechSynthesis.speaking) {
-window.speechSynthesis.pause();
-window.speechSynthesis.resume();
-}
-}, 10000);
-return () => clearInterval(keepAlive);
-}, [isTtsPlaying, ttsSupported]);
 // Laufende Sprachausgabe beim Verlassen der Seite/Komponente stoppen
 useEffect(() => {
 if (!ttsSupported) return;
@@ -442,21 +463,34 @@ const stripMarkdownForTts = (text) => text
 .replace(/\n/g, ' ');
 const speakText = useCallback((text) => {
 window.speechSynthesis.cancel();
-const utterance = new SpeechSynthesisUtterance(stripMarkdownForTts(text));
+const { voice, genderMatched } = ttsSelectedVoice;
+// Wenn der Browser keine Stimme mit passendem Geschlecht meldet (z.B. weil
+// nur eine einzige deutsche Stimme installiert ist), bewirkt der Umschalter
+// sonst gar nichts hörbares — per Tonhöhe wird der Unterschied trotzdem
+// wahrnehmbar.
+const pitch = genderMatched ? 1 : (ttsGender === 'male' ? 0.75 : 1.3);
+const utterances = chunkTextForTts(stripMarkdownForTts(text)).map((chunk) => {
+const utterance = new SpeechSynthesisUtterance(chunk);
 utterance.lang = 'de-DE';
-if (ttsSelectedVoice) utterance.voice = ttsSelectedVoice;
-utterance.onend = () => {
+utterance.pitch = pitch;
+if (voice) utterance.voice = voice;
+return utterance;
+});
+const stop = () => {
 setIsTtsPlaying(false);
 ttsUtteranceRef.current = null;
 };
-utterance.onerror = () => {
-setIsTtsPlaying(false);
-ttsUtteranceRef.current = null;
-};
-ttsUtteranceRef.current = utterance;
-window.speechSynthesis.speak(utterance);
+utterances.forEach((utterance, index) => {
+utterance.onerror = stop;
+if (index === utterances.length - 1) utterance.onend = stop;
+});
+// Referenz auf alle Utterances der Warteschlange halten — sonst sammelt
+// Chrome sie per Garbage Collection ein und die Wiedergabe bricht mitten
+// in der Kette ab.
+ttsUtteranceRef.current = utterances;
+utterances.forEach((utterance) => window.speechSynthesis.speak(utterance));
 setIsTtsPlaying(true);
-}, [ttsSelectedVoice]);
+}, [ttsSelectedVoice, ttsGender]);
 // Erstellt bei Bedarf eine KI-Kurzfassung der Diagnose (nur die wichtigsten
 // Punkte) und liest sie vor; das Ergebnis wird für den aktuellen Diagnosetext
 // zwischengespeichert, damit nicht bei jedem Abspielen erneut angefragt wird.
@@ -1302,8 +1336,11 @@ Männlich
 </button>
 </div>
 </div>
-{ttsSelectedVoice && (
-<p className="text-xs text-gray-500">Stimme: {ttsSelectedVoice.name}</p>
+{ttsSelectedVoice.voice && (
+<p className="text-xs text-gray-500">
+Stimme: {ttsSelectedVoice.voice.name}
+{!ttsSelectedVoice.genderMatched && ' (keine passende Stimme gefunden, Tonhöhe angepasst)'}
+</p>
 )}
 </div>
 ) : (

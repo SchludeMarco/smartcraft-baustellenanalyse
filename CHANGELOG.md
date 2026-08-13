@@ -8,6 +8,30 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.19.2] – 2026-08-13
+
+### Behoben
+- **TTS-Sprachausgabe brach weiterhin vorzeitig ab, Stimmeinstellung
+  "Männlich" hatte keine hörbare Wirkung.** Der in V1.18.2 eingeführte
+  Workaround (periodisches `pause()`/`resume()` gegen den bekannten
+  Chrome-15s-Abbruch bei langen Utterances) reichte nicht aus bzw. konnte
+  auf manchen Sprachengines die Wiedergabe selbst abwürgt haben, statt sie
+  fortzusetzen. Ersetzt durch Zerlegen des Textes in Satz-Häppchen
+  (`chunkTextForTts`, ~200 Zeichen), die als Folge kurzer, nacheinander in
+  die Warteschlange gegebene `SpeechSynthesisUtterance`-Objekte abgespielt
+  werden — alle bleiben per Ref referenziert, damit sie nicht vorzeitig vom
+  Garbage Collector eingesammelt werden. Für die Stimmauswahl galt: Meldet
+  der Browser (z.B. Chrome ohne installierte deutsche Systemstimmen, nur
+  "Google Deutsch") keine einzelne Stimme mit passendem Geschlecht, fiel
+  `pickGermanVoice` bislang stillschweigend auf dieselbe Stimme zurück,
+  egal welches Geschlecht gewählt war — der Umschalter wirkte dadurch tot.
+  Jetzt liefert `pickGermanVoice` zusätzlich `genderMatched`; fehlt ein
+  passender Treffer, wird die Tonhöhe der Utterance angepasst (männlich
+  tiefer, weiblich höher), damit der Umschalter immer hörbar etwas bewirkt,
+  und ein Hinweistext unter der Stimmenanzeige erklärt den Fallback. Die
+  Namens-Heuristik wurde zudem um gängige Edge/Windows-"Online (Natural)"-
+  Stimmennamen erweitert (Conrad, Katja, Bernd, Christa, Elke, u.a.).
+
 ## [1.19.1] – 2026-08-13
 
 ### Geändert
