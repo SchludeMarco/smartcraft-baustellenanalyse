@@ -362,6 +362,10 @@ const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
 const [isTtsPlaying, setIsTtsPlaying] = useState(false);
 const [ttsVoices, setTtsVoices] = useState([]);
+// Chrome sammelt das SpeechSynthesisUtterance-Objekt per Garbage Collection
+// ein, sobald keine Referenz mehr darauf besteht — dann bricht die Ansage
+// unvermittelt ab. Ref hält es für die Dauer der Wiedergabe am Leben.
+const ttsUtteranceRef = useRef(null);
 const [ttsGender, setTtsGender] = useState(() => {
 try {
 return localStorage.getItem('smartcraft-tts-gender') === 'male' ? 'male' : 'female';
@@ -401,13 +405,17 @@ return () => clearInterval(keepAlive);
 // Laufende Sprachausgabe beim Verlassen der Seite/Komponente stoppen
 useEffect(() => {
 if (!ttsSupported) return;
-return () => window.speechSynthesis.cancel();
+return () => {
+window.speechSynthesis.cancel();
+ttsUtteranceRef.current = null;
+};
 }, [ttsSupported]);
 const ttsSelectedVoice = useMemo(() => pickGermanVoice(ttsVoices, ttsGender), [ttsVoices, ttsGender]);
 const handleToggleTts = useCallback(() => {
 if (!ttsSupported) return;
 if (isTtsPlaying) {
 window.speechSynthesis.cancel();
+ttsUtteranceRef.current = null;
 setIsTtsPlaying(false);
 return;
 }
@@ -422,8 +430,15 @@ const plainText = solutionText
 const utterance = new SpeechSynthesisUtterance(plainText);
 utterance.lang = 'de-DE';
 if (ttsSelectedVoice) utterance.voice = ttsSelectedVoice;
-utterance.onend = () => setIsTtsPlaying(false);
-utterance.onerror = () => setIsTtsPlaying(false);
+utterance.onend = () => {
+setIsTtsPlaying(false);
+ttsUtteranceRef.current = null;
+};
+utterance.onerror = () => {
+setIsTtsPlaying(false);
+ttsUtteranceRef.current = null;
+};
+ttsUtteranceRef.current = utterance;
 window.speechSynthesis.speak(utterance);
 setIsTtsPlaying(true);
 }, [ttsSupported, isTtsPlaying, solutionText, ttsSelectedVoice]);
@@ -558,6 +573,7 @@ setIsStartingFreshSession(false);
 // --- FUNKTION: ALLES ZURÜCKSETZEN ---
 const handleReset = useCallback(() => {
 if (ttsSupported) window.speechSynthesis.cancel();
+ttsUtteranceRef.current = null;
 setIsTtsPlaying(false);
 setSelectedImageBase64(null);
 setProblemDescription('');

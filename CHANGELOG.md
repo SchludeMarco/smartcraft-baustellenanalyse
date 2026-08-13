@@ -8,6 +8,19 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.18.2] – 2026-08-13
+
+### Behoben
+- **TTS-Sprachausgabe brach ohne Vorwarnung nach kurzer Zeit ab.** Ursache
+  war ein bekannter Chrome-Bug: Das `SpeechSynthesisUtterance`-Objekt wurde
+  von der Web Speech API selbst nicht referenziert, sondern nur von der
+  lokalen Variable in `handleToggleTts` — sobald diese Funktion durchgelaufen
+  war, konnte der Garbage Collector das Objekt mitten in der Wiedergabe
+  einsammeln und die Ansage brach ab. Behoben, indem die Utterance zusätzlich
+  in einer Ref (`ttsUtteranceRef`) für die Dauer der Wiedergabe gehalten wird.
+  Der bereits vorhandene Workaround für den separaten 15s-Abbruch-Bug
+  (periodisches pause/resume) bleibt unverändert bestehen.
+
 ## [1.18.1] – 2026-08-13
 
 ### Zurückgenommen
