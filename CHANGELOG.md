@@ -8,23 +8,15 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
-## [1.19.0] – 2026-08-12
+## [1.18.1] – 2026-08-13
 
-### Hinzugefügt
-- **Infografik-Ansicht für die KI-Diagnose.** Die Lösung kam bisher nur als
-  reiner Fließtext zurück (Gemini liefert für die Hauptdiagnose bewusst kein
-  `responseSchema`, siehe Kommentar bei `callGeminiVisionAPI`). Ein neuer,
-  rein clientseitiger Parser (`solutionSteps` in `App.jsx`) zerlegt den
-  Freitext heuristisch in eine kurze Einleitung plus nummerierte
-  Lösungsschritte (erkennt Muster wie „1.", „2)" oder „Schritt 3:") und
-  stellt sie als Schritt-Karten mit passendem Icon dar (Warnung, Zeitaufwand,
-  Werkzeug, Material, erledigt — per Schlüsselwort-Heuristik in
-  `classifyStepIcon`). Ein Umschalter „Infografik"/„Text" in der
-  Ergebnisanzeige wechselt bei Bedarf zurück auf die klassische Textansicht;
-  lässt sich der Text nicht sinnvoll in Schritte zerlegen (< 2 erkannte
-  Schritte), wird automatisch nur die Textansicht angezeigt. Keine externen
-  API-Aufrufe oder neuen Abhängigkeiten — läuft komplett kostenfrei mit dem
-  bereits vorhandenen `lucide-react`.
+### Zurückgenommen
+- **Infografik-Ansicht (Schritt-Karten) für die KI-Diagnose wieder entfernt.**
+  Kurz zuvor in V1.19.0 eingeführt, hat die App danach nicht mehr wie
+  gewünscht funktioniert — die Ergänzung hat die App insgesamt überladen.
+  Die Idee ist nicht verworfen, sondern zurückgestellt: bei Gelegenheit neu
+  angehen, wenn dafür Zeit ist, statt sie auf die bestehende Textanzeige
+  draufzusatteln.
 
 ## [1.18.0] – 2026-08-12
 
