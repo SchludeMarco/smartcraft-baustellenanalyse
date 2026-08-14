@@ -117,6 +117,33 @@ img.src = reader.result;
 reader.onerror = (error) => reject(error);
 });
 };
+// Kurzer "Bling"-Ton als akustischer Hinweis, dass die Analyse fertig ist
+// (z.B. wenn man während der Wartezeit den Tab gewechselt hat). Web Audio
+// API statt Audio-Datei, damit kein zusätzliches Asset benötigt wird.
+const playCompletionSound = () => {
+try {
+const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+const ctx = new AudioContextClass();
+const now = ctx.currentTime;
+[1046.5, 1568].forEach((freq, i) => {
+const oscillator = ctx.createOscillator();
+const gain = ctx.createGain();
+oscillator.type = 'sine';
+oscillator.frequency.value = freq;
+const start = now + i * 0.09;
+gain.gain.setValueAtTime(0, start);
+gain.gain.linearRampToValueAtTime(0.2, start + 0.02);
+gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.5);
+oscillator.connect(gain);
+gain.connect(ctx.destination);
+oscillator.start(start);
+oscillator.stop(start + 0.5);
+});
+setTimeout(() => ctx.close(), 700);
+} catch {
+// Web Audio nicht verfügbar -> Ton einfach auslassen
+}
+};
 /**
 * Funktion mit Exponential Backoff für API-Anrufe, um Throttling zu behandeln
 */
@@ -872,6 +899,7 @@ const candidate = result.candidates?.[0];
 if (candidate && candidate.content?.parts?.[0]?.text) {
 const solution = candidate.content.parts[0].text;
 setSolutionText(solution);
+playCompletionSound();
 // Speichern der Analyse in Firestore
 await saveAnalysis({
 selectedTrade,

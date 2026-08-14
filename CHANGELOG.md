@@ -8,6 +8,17 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.24.0] – 2026-08-14
+
+### Hinzugefügt
+- **Akustischer Hinweis nach Analyse-Abschluss.** Bei einer erfolgreichen
+  Bauproblem-Analyse (`callGeminiVisionAPI` in `App.jsx`) ertönt jetzt ein
+  kurzer "Bling"-Ton, sobald die Lösung eintrifft — nützlich, wenn man
+  während der Wartezeit den Tab gewechselt hat und sonst nicht mitbekommt,
+  dass das Ergebnis fertig ist. Der Ton wird per Web Audio API synthetisch
+  erzeugt (`playCompletionSound`, zwei kurze Sinustöne), damit kein
+  zusätzliches Audio-Asset ausgeliefert werden muss.
+
 ## [1.23.1] – 2026-08-14
 
 ### Geändert
