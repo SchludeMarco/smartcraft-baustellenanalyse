@@ -1213,7 +1213,7 @@ const printContent = `
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SM@RTCRAFT Bericht - ${date}</title>
+<title>Sm@rtCraft Bericht - ${date}</title>
 <style>
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif; margin: 40px; color: #333; line-height: 1.6; }
 h1 { color: #cc0000; border-bottom: 4px solid #ff8800; padding-bottom: 10px; margin-bottom: 30px; }
@@ -1252,7 +1252,7 @@ ${materialHtml}
 ${safetyHtml}
 ${videoHtml}
 ${reportHtml}
-<p class="meta">Bericht generiert von der SM@RTCRAFT Handwerker App.</p>
+<p class="meta">Bericht generiert von der Sm@rtCraft Handwerker App.</p>
 </body>
 </html>
 `;

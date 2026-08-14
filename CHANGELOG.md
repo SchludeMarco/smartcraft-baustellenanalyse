@@ -8,6 +8,24 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.23.1] – 2026-08-14
+
+### Geändert
+- **Namens-Konsolidierung auf "Sm@rtCraft".** Der lokale Projektordner trug
+  versehentlich den Tippfehler "Sm@artcraft" (ein "a" zu viel). Im
+  PDF-Export (`handleExportPdf` in `App.jsx`) standen zudem noch zwei
+  Stellen mit "SM@RTCRAFT" in Großbuchstaben (Titel-Tag, Fußzeile) —
+  inkonsistent zur sonst überall bereits korrekten Schreibweise
+  "Sm@rtCraft". Der npm-Paketname in `package.json` wurde von
+  `smartcraft-baustellenanalyse` (Relikt der alten, seit V1.9.2 abgelösten
+  Tagline) auf `smartcraft` verkürzt — `@` ist in npm-Paketnamen nicht
+  erlaubt, daher als technisches Kürzel ohne Sonderzeichen. Firebase-/GCP-
+  Projekt-ID (`smartcraft-baustellenanalyse`) sowie der Firestore-`appId`-
+  Pfad in `App.jsx` bleiben bewusst unverändert, da beide nicht umbenennbar
+  sind bzw. eine Änderung bestehende Nutzerdaten (Analyse-Historie,
+  Fehlerreports, Profile) von ihrem Firestore-Pfad trennen würde — siehe
+  Begründung bereits in V1.9.2.
+
 ## [1.23.0] – 2026-08-13
 
 ### Hinzugefügt
