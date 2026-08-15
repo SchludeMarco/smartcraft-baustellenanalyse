@@ -8,6 +8,18 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.24.1] – 2026-08-15
+
+### Geändert
+- **Aussagekräftigere Fehlermeldung bei 429/5xx-Antworten in `fetchWithRetry`.**
+  Nach Ausschöpfen der Retries warf `fetchWithRetry` (`App.jsx`) bislang
+  `API error: ${response.statusText}` — auf HTTP/2-Antworten (so liefert
+  Vercel `/api/gemini` aus) ist `statusText` laut Spec immer leer, wodurch im
+  Error-Report nur der nichtssagende Text "API error:" ankam (siehe Report
+  im Kontext `gemini-tts-summary-api`, 14.8.2026 22:29 Uhr, V1.24.0). Die
+  Meldung enthält jetzt zusätzlich den numerischen Status
+  (`API error: 429`/`API error: 500 Internal Server Error`).
+
 ## [1.24.0] – 2026-08-14
 
 ### Hinzugefügt

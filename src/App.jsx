@@ -163,7 +163,7 @@ const response = await fetch(url, requestOptions);
 if (!response.ok) {
 // Bei 429 (Too Many Requests) oder 5xx (Serverfehler) versuchen wir es erneut
 if (response.status === 429 || response.status >= 500) {
-throw new Error(`API error: ${response.statusText}`, { cause: response.status });
+throw new Error(`API error: ${response.status}${response.statusText ? ' ' + response.statusText : ''}`, { cause: response.status });
 }
 }
 return response;

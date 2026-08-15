@@ -36,7 +36,25 @@ _Aktuell keine offenen Einträge._
 
 ## Gelöste Fehler
 
-### 1. gemini-vision-api: "Fehler bei der KI-Anfrage oder leere Antwort." / FUNCTION_PAYLOAD_TOO_LARGE
+### 1. gemini-tts-summary-api: "API error: " (leer)
+
+- **Status:** Gelöst (V1.24.1)
+- **Kontext:** `gemini-tts-summary-api` (`callGeminiTtsSummaryAPI` in
+  `src/App.jsx`, nutzt den geteilten `fetchWithRetry`-Helper)
+- **Nachricht:** "API error: " ohne jeden weiteren Text (14.8.2026, 22:29 Uhr,
+  V1.24.0).
+- **Ursache:** `fetchWithRetry` baute die Fehlermeldung bei 429/5xx-Antworten
+  nach Ausschöpfen der Retries ausschließlich aus `response.statusText`
+  (`src/App.jsx`, Zeile 166). Bei HTTP/2-Antworten — so liefert Vercel
+  `/api/gemini` aus — ist `statusText` laut Fetch-Spec immer ein leerer
+  String, wodurch die Meldung auf "API error: " ohne Inhalt kollabierte.
+  Gleiche Fehlerklasse wie bereits einmal in `callGeminiVisionAPI` (V1.22.2,
+  siehe Eintrag 2 unten), diesmal aber im geteilten Retry-Helper statt im
+  einzelnen Aufrufer.
+- **Lösung:** Meldung ergänzt `response.status` (immer vorhanden) neben dem
+  ggf. leeren `statusText`, siehe CHANGELOG `[1.24.1]`.
+
+### 2. gemini-vision-api: "Fehler bei der KI-Anfrage oder leere Antwort." / FUNCTION_PAYLOAD_TOO_LARGE
 
 - **Status:** Gelöst (V1.22.4)
 - **Kontext:** `gemini-vision-api` (Hauptanalyse, `callGeminiVisionAPI` in
