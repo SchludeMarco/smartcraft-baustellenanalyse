@@ -160,7 +160,7 @@ setTimeout(() => ctx.close(), 700);
 */
 const fetchWithRetry = async (url, options, maxRetries = 3) => {
 let requestOptions = options;
-if ((url === apiUrl || url === demoStatusUrl) && appCheckInstance) {
+if ((url === apiUrl || url === demoStatusUrl || url === apiTtsUrl) && appCheckInstance) {
 try {
 const { token } = await getAppCheckToken(appCheckInstance);
 requestOptions = { ...options, headers: { ...options.headers, 'X-Firebase-AppCheck': token } };

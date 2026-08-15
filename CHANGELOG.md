@@ -8,6 +8,19 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.26.2] – 2026-08-15
+
+### Behoben
+- **Sprachausgabe (TTS) scheiterte durchgängig mit "Forbidden: invalid App
+  Check token".** Gemeldet über den Admin-Bereich (Kontext `google-tts-api`,
+  siehe `error_log.md`). `fetchWithRetry` hängte den
+  `X-Firebase-AppCheck`-Header bislang nur für `/api/gemini` und
+  `/api/demo-status` an — `/api/tts` fehlte in dieser Bedingung, obwohl
+  `api/tts.js` denselben Header zwingend voraussetzt, sobald App Check
+  serverseitig aktiv ist. Jede TTS-Anfrage scheiterte dadurch strukturell mit
+  401, unabhängig vom autorisierten Konto. `apiTtsUrl` ist jetzt Teil der
+  Bedingung.
+
 ## [1.26.1] – 2026-08-15
 
 ### Behoben

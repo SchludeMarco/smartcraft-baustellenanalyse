@@ -1,7 +1,8 @@
 # Fehler-Log
 
-Kuratierte, lesbare Übersicht aller über den PIN-geschützten Admin-Bereich
-(`AdminPanel.jsx`) gemeldeten Fehler. Rohdaten liegen dauerhaft in Firestore
+Kuratierte, lesbare Übersicht aller über den Admin-Bereich (`AdminPanel.jsx`,
+Zugriff seit V1.26.0 per Firebase Custom Claim statt PIN) gemeldeten Fehler.
+Rohdaten liegen dauerhaft in Firestore
 (`errorReports`-Collection-Group, siehe `errorReporting.js`) — diese Datei
 fasst sie zusammen, damit man nicht bei jedem Blick ins Admin-Terminal alte,
 längst behobene Reports erneut durchgehen muss.
@@ -86,6 +87,23 @@ _Aktuell keine offenen Einträge._
   Server-Antwort ersetzt (CHANGELOG `[1.22.2]`) — dieser Fix war die
   Voraussetzung dafür, die Root Cause überhaupt aus einem Report ablesen zu
   können.
+
+### 3. google-tts-api: "Forbidden: invalid App Check token"
+
+- **Status:** Gelöst (V1.26.2)
+- **Kontext:** `google-tts-api` (`fetchTtsAudio`/`speakText` in `src/App.jsx`,
+  ruft `/api/tts` über den geteilten `fetchWithRetry`-Helper auf)
+- **Nachricht:** `{"error":"Forbidden: invalid App Check token"}` (15.8.2026,
+  13:26 Uhr, V1.26.0, Android/Chrome Mobile).
+- **Ursache:** `fetchWithRetry` hängte den `X-Firebase-AppCheck`-Header nur an,
+  wenn die Ziel-URL `apiUrl` (`/api/gemini`) oder `demoStatusUrl`
+  (`/api/demo-status`) war — `apiTtsUrl` (`/api/tts`) fehlte in dieser
+  Bedingung. `api/tts.js` verlangt den Header aber zwingend, sobald App Check
+  serverseitig aktiv ist (`FIREBASE_SERVICE_ACCOUNT_KEY` gesetzt), und lehnt
+  ohne ihn jede Anfrage mit 401 ab. Strukturell betroffen war damit jede
+  TTS-Anfrage, nicht nur Einzelfälle.
+- **Lösung:** `apiTtsUrl` in die Bedingung aufgenommen, siehe CHANGELOG
+  `[1.26.2]`.
 
 <!--
 ### N. Kurzbeschreibung
