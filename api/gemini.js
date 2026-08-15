@@ -103,70 +103,83 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Nur Requests akzeptieren, die tatsächlich vom eigenen Frontend kommen
-  // (verhindert, dass fremde Seiten diesen Endpoint als kostenlosen
-  // Gemini-Proxy missbrauchen und das API-Kontingent/Kosten verursachen).
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
-  let originHost = null;
+  // Kompletter Handler-Body in einem try/catch: checkRateLimit() (Firestore-
+  // Transaktion) und verifyAppCheck() konnten bislang unbehandelt durchschlagen
+  // und die Function mit einem plattformseitigen 503 ohne jede eigene
+  // Fehlermeldung im Log abstürzen lassen. Jetzt landet jeder unerwartete
+  // Fehler als sauberes JSON mit Log-Zeile statt eines stillen Crashs.
   try {
-    originHost = req.headers.origin ? new URL(req.headers.origin).host : null;
-  } catch {
-    originHost = null;
-  }
-  if (!originHost || originHost !== host) {
-    res.status(403).json({ error: 'Forbidden' });
-    return;
-  }
-
-  // App Check + Rate-Limiting: nur aktiv, wenn ein Service-Account
-  // konfiguriert ist (siehe getAdminApp). Sonst unverändertes Verhalten.
-  const app = getAdminApp();
-  if (app) {
-    const appCheckOk = await verifyAppCheck(req, app);
-    if (!appCheckOk) {
-      res.status(401).json({ error: 'Forbidden: invalid App Check token' });
+    // Nur Requests akzeptieren, die tatsächlich vom eigenen Frontend kommen
+    // (verhindert, dass fremde Seiten diesen Endpoint als kostenlosen
+    // Gemini-Proxy missbrauchen und das API-Kontingent/Kosten verursachen).
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    let originHost = null;
+    try {
+      originHost = req.headers.origin ? new URL(req.headers.origin).host : null;
+    } catch {
+      originHost = null;
+    }
+    if (!originHost || originHost !== host) {
+      res.status(403).json({ error: 'Forbidden' });
       return;
     }
-    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
-    const { allowed, demoExceeded, remaining } = await checkRateLimit(app, ip);
-    // Geht als X-Demo-Remaining-Header auf jede Antwort dieses Handlers raus
-    // (Erfolg wie Fehler), damit die App live anzeigen kann, wie viele
-    // Anfragen noch übrig sind.
-    res.setHeader('X-Demo-Remaining', String(remaining));
-    if (!allowed) {
-      if (demoExceeded) {
-        // 403 statt 429: fetchWithRetry im Client behandelt 429 als
-        // vorübergehend und wiederholt automatisch — das Demo-Kontingent ist
-        // aber endgültig aufgebraucht, ein Retry würde nur unnötig warten.
-        res.status(403).json({
-          error: `Demo-Kontingent erreicht: Diese öffentliche Vorschau ist auf ${DEMO_LIFETIME_MAX} KI-Anfragen pro Besucher begrenzt. Danke fürs Ausprobieren!`,
-        });
-      } else {
-        res.status(429).json({ error: 'Too many requests' });
+
+    // App Check + Rate-Limiting: nur aktiv, wenn ein Service-Account
+    // konfiguriert ist (siehe getAdminApp). Sonst unverändertes Verhalten.
+    const app = getAdminApp();
+    if (app) {
+      const appCheckOk = await verifyAppCheck(req, app);
+      if (!appCheckOk) {
+        res.status(401).json({ error: 'Forbidden: invalid App Check token' });
+        return;
       }
+      const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
+      const { allowed, demoExceeded, remaining } = await checkRateLimit(app, ip);
+      // Geht als X-Demo-Remaining-Header auf jede Antwort dieses Handlers raus
+      // (Erfolg wie Fehler), damit die App live anzeigen kann, wie viele
+      // Anfragen noch übrig sind.
+      res.setHeader('X-Demo-Remaining', String(remaining));
+      if (!allowed) {
+        if (demoExceeded) {
+          // 403 statt 429: fetchWithRetry im Client behandelt 429 als
+          // vorübergehend und wiederholt automatisch — das Demo-Kontingent ist
+          // aber endgültig aufgebraucht, ein Retry würde nur unnötig warten.
+          res.status(403).json({
+            error: `Demo-Kontingent erreicht: Diese öffentliche Vorschau ist auf ${DEMO_LIFETIME_MAX} KI-Anfragen pro Besucher begrenzt. Danke fürs Ausprobieren!`,
+          });
+        } else {
+          res.status(429).json({ error: 'Too many requests' });
+        }
+        return;
+      }
+    } else {
+      console.warn('FIREBASE_SERVICE_ACCOUNT_KEY nicht gesetzt — App Check/Rate-Limiting deaktiviert.');
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      res.status(500).json({ error: 'Server misconfigured: GEMINI_API_KEY missing' });
       return;
     }
-  } else {
-    console.warn('FIREBASE_SERVICE_ACCOUNT_KEY nicht gesetzt — App Check/Rate-Limiting deaktiviert.');
-  }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    res.status(500).json({ error: 'Server misconfigured: GEMINI_API_KEY missing' });
-    return;
-  }
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
-
-  try {
-    const upstream = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req.body),
-    });
-    const text = await upstream.text();
-    res.status(upstream.status).setHeader('Content-Type', 'application/json').send(text);
+    try {
+      const upstream = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req.body),
+      });
+      const text = await upstream.text();
+      res.status(upstream.status).setHeader('Content-Type', 'application/json').send(text);
+    } catch (error) {
+      console.error('Upstream-Gemini-Aufruf fehlgeschlagen:', error);
+      res.status(502).json({ error: 'Upstream Gemini request failed' });
+    }
   } catch (error) {
-    res.status(502).json({ error: 'Upstream Gemini request failed' });
+    console.error('Unerwarteter Fehler in /api/gemini:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal server error: ' + (error?.message || String(error)) });
+    }
   }
 }

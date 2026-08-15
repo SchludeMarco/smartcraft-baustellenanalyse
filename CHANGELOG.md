@@ -8,6 +8,24 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.25.5] – 2026-08-15
+
+### Behoben
+- **`maxDuration`-Erhöhung allein löste das 503 bei `/api/gemini` nicht.**
+  Nach V1.25.4 trat derselbe plattformseitige 503 (leeres Log, keine eigene
+  Fehlermeldung) weiterhin bei jedem Versuch auf, unabhängig vom Timeout.
+  Tatsächliche Ursache gefunden: `checkRateLimit()` (die Firestore-
+  Transaktion fürs Rate-Limiting) lief **ungeschützt außerhalb jedes
+  try/catch** im Handler — anders als der Upstream-Gemini-Aufruf, der schon
+  seit Erstversion sauber abgefangen wurde. Ein dort auftretender Fehler
+  (Firestore-Transaktion) crashte die gesamte Function unbehandelt, was
+  Vercel als generisches 503 ohne jede eigene Log-Zeile ausliefert — daher
+  die zuvor völlig leeren `logs`-Arrays in `vercel logs --json`. Lösung: Der
+  komplette Handler-Body liegt jetzt in einem try/catch; jeder unerwartete
+  Fehler landet als sauberes `500`-JSON mit `console.error`-Log statt eines
+  stillen Absturzes — macht die eigentliche Fehlerursache beim nächsten
+  Auftreten direkt sichtbar.
+
 ## [1.25.4] – 2026-08-15
 
 ### Behoben
