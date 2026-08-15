@@ -8,6 +8,25 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.26.5] – 2026-08-15
+
+### Behoben
+- **Mail-Dedup aus V1.26.4 ließ sich durch einen abweichenden `context`-Wert
+  umgehen.** Nutzerhinweis: Der Dedup-Key war exakt der vom Client
+  gesendete `context`-String, ohne Prüfung gegen die bekannte Kontextliste
+  (`ERROR_CONTEXT_INFO`). Jeder mit gültigem App-Check-Token (den die echte
+  App ohnehin mitliefert, z.B. über die Browser-Konsole abrufbar) hätte
+  `/api/report-bug` mit einem bei jedem Aufruf leicht geänderten `context`
+  (z.B. angehängte Zufallszahl) aufrufen können — jeder "neue" String hätte
+  wieder als unbenachrichtigt gegolten und eine eigene Mail ausgelöst,
+  die Sperre also komplett wirkungslos gemacht. Als Nebeneffekt hätte das
+  auch das `notifiedContexts`-Dokument unbegrenzt mit Müll-Einträgen
+  wachsen lassen. Lösung: `context` wird jetzt gegen die feste, im Code
+  hinterlegte Kontextliste normalisiert — nur bekannte Kontexte bekommen
+  einen eigenen Dedup-Slot, alles andere fällt in einen gemeinsamen
+  Sammel-Slot (`_unrecognized`), der beliebig variierte Werte auf eine
+  einzige Mail begrenzt.
+
 ## [1.26.4] – 2026-08-15
 
 ### Behoben

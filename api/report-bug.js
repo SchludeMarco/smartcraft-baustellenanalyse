@@ -2,7 +2,7 @@ import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAppCheck } from 'firebase-admin/app-check';
 import { getFirestore } from 'firebase-admin/firestore';
 
-import { getErrorContextInfo } from '../src/errorContextInfo.js';
+import { ERROR_CONTEXT_INFO, getErrorContextInfo } from '../src/errorContextInfo.js';
 import { APP_ID } from '../shared/appId.js';
 
 // Dokument, das sich pro Fehlerkontext merkt, ob dafür schon eine Mail raus
@@ -14,6 +14,18 @@ import { APP_ID } from '../shared/appId.js';
 // Regression und alarmiert wieder per Mail.
 const notifiedContextsRef = (db) =>
   db.collection('artifacts').doc(APP_ID).collection('adminMeta').doc('notifiedContexts');
+
+// Der Client schickt "context" als freien String mit — ein Aufrufer mit
+// gültigem App-Check-Token (z.B. jeder Nutzer über die Browser-Konsole) könnte
+// sonst mit einem bei jedem Aufruf leicht geänderten context-Wert (z.B. einer
+// angehängten Zufallszahl) das Dedup unten beliebig oft umgehen, weil jeder
+// "neue" String wieder als noch-nicht-benachrichtigt gilt. Nur die bekannten,
+// im Code festgelegten Kontexte (ERROR_CONTEXT_INFO) bekommen daher einen
+// eigenen Dedup-Slot; alles andere fällt in einen gemeinsamen Sammel-Slot, der
+// selbst beliebig oft variierte Werte auf eine einzige Mail begrenzt.
+const UNKNOWN_CONTEXT_BUCKET = '_unrecognized';
+const dedupKeyFor = (context) =>
+  Object.prototype.hasOwnProperty.call(ERROR_CONTEXT_INFO, context) ? context : UNKNOWN_CONTEXT_BUCKET;
 
 // Bug-Reports sind selten (kein regulärer User-Flow), daher deutlich enger
 // begrenzt als /api/gemini — reicht für mehrere Crashes in Folge, bremst aber
@@ -161,11 +173,12 @@ export default async function handler(req, res) {
     try {
       const db = getFirestore(app);
       const ref = notifiedContextsRef(db);
+      const dedupKey = dedupKeyFor(context);
       const alreadySent = await db.runTransaction(async (tx) => {
         const snap = await tx.get(ref);
         const contexts = snap.exists ? (snap.data().contexts || {}) : {};
-        if (contexts[context]) return true;
-        tx.set(ref, { contexts: { ...contexts, [context]: true } }, { merge: true });
+        if (contexts[dedupKey]) return true;
+        tx.set(ref, { contexts: { ...contexts, [dedupKey]: true } }, { merge: true });
         return false;
       });
       if (alreadySent) {
