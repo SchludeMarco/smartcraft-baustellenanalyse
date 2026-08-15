@@ -8,6 +8,18 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.25.1] – 2026-08-15
+
+### Hinzugefügt
+- **Hinweis aufs Demo-Kontingent auch direkt im Analyseergebnis.** Problem:
+  Der Live-Zähler aus V1.25.0 aktualisierte sich zwar nach jeder Anfrage,
+  stand aber nur im wegklickbaren Banner ganz oben — einmal dismisst oder
+  aus dem Blickfeld gescrollt, blieb der neue Rest-Stand nach einer Analyse
+  unbemerkt. Lösung: Direkt unter der "Lösung und Diagnose"-Überschrift im
+  Analyseergebnis steht jetzt zusätzlich "Noch X von 30 kostenlosen
+  KI-Anfragen für dieses Gerät übrig" — erscheint bei jeder abgeschlossenen
+  Hauptanalyse neu, unabhängig vom Banner-Status.
+
 ## [1.25.0] – 2026-08-15
 
 ### Hinzugefügt

@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.25.0)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.25.1)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -50,7 +50,10 @@ Von dort an kamen die Hürden meist erst im Betrieb ans Licht, nicht am Reißbre
   App auf das Limit hin — inklusive Live-Zähler ("Noch X von 30 übrig"), der
   beim Start über den rein lesenden Endpoint `api/demo-status.js` geladen und
   nach jeder KI-Anfrage über den `X-Demo-Remaining`-Header aus `api/gemini.js`
-  aktualisiert wird.
+  aktualisiert wird. Denselben Live-Stand zeigt zusätzlich das Analyseergebnis
+  selbst (direkt unter "Lösung und Diagnose"), damit er nach jeder
+  Hauptanalyse neu ins Blickfeld rückt — unabhängig davon, ob der Banner oben
+  weggeklickt wurde.
 - **Zwei Gemini-Modelle wurden während der Entwicklung abgeschaltet**
   (`gemini-2.5-flash-preview-09-2025`, danach `gemini-2.5-flash`) — die App lief
   jeweils plötzlich ins Leere. Seitdem zeigt `gemini-flash-latest` (ein stabiler

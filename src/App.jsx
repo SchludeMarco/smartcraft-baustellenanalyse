@@ -1382,6 +1382,15 @@ return (
 <CheckCircle className="w-6 h-6 text-green-500 mr-2" />
 Lösung und Diagnose
 </h2>
+{/* Erneuter Hinweis aufs Demo-Kontingent direkt nach jeder Analyse (nicht
+    nur im wegklickbaren Banner oben), damit der aktuelle Stand nicht
+    übersehen wird — demoRemaining kommt aus dem X-Demo-Remaining-Header
+    (siehe updateDemoRemainingFromResponse). */}
+{demoRemaining !== null && (
+<p className="text-xs text-gray-500 -mt-4">
+Noch {demoRemaining} von {DEMO_LIFETIME_MAX} kostenlosen KI-Anfragen für dieses Gerät übrig.
+</p>
+)}
 {/* 1. Hauptlösung */}
 <div className="prose max-w-none text-gray-700 leading-relaxed max-h-96 overflow-y-auto p-3 border border-gray-200 rounded-lg bg-gray-50">
 {/* Anzeige des Lösungstextes */}
@@ -1634,7 +1643,7 @@ Um die Analyse zu starten, benötigen Sie **eines** der folgenden Elemente:
 <p className="text-xs mt-4 text-gray-500">Wählen Sie zuerst Ihren Beruf (Abschnitt 1) für eine präzisere Diagnose.</p>
 </div>
 );
-}, [isAnalyzing, error, clearError, solutionText, handleExportPdf, materialList, safetyTips, videoLinks, clientReport, isGeneratingMaterials, isGeneratingSafety, isGeneratingVideos, isGeneratingReport, callGeminiMaterialsAPI, callGeminiSafetyAPI, callGeminiVideoSearch, callGeminiClientReportAPI, selectedImageBase64, problemDescription, isTtsPlaying, isTtsLoading, ttsGender, ttsMode, isGeneratingTtsShort, handleToggleTts, theme]);
+}, [isAnalyzing, error, clearError, solutionText, handleExportPdf, materialList, safetyTips, videoLinks, clientReport, isGeneratingMaterials, isGeneratingSafety, isGeneratingVideos, isGeneratingReport, callGeminiMaterialsAPI, callGeminiSafetyAPI, callGeminiVideoSearch, callGeminiClientReportAPI, selectedImageBase64, problemDescription, isTtsPlaying, isTtsLoading, ttsGender, ttsMode, isGeneratingTtsShort, handleToggleTts, theme, demoRemaining]);
 // Profil-Modal-Komponente (angepasst an Rot/Blau)
 const UserProfileModal = () => {
 const [showProfile, setShowProfile] = useState(false);
