@@ -8,6 +8,18 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.24.4] – 2026-08-15
+
+### Hinzugefügt
+- **Hinweis auf das Demo-Kontingent direkt beim App-Start.** Problem: Beim
+  Teilen des Vercel-Links (z.B. LinkedIn) erfuhren Erstbesucher vom
+  lebenslangen Limit aus `DEMO_LIFETIME_MAX` (`api/gemini.js`, 30
+  KI-Anfragen/Gerät) erst, wenn eine Analyse mit 403 fehlschlug — kein
+  Hinweis vorab. Lösung: Ein wegklickbarer, blauer Info-Banner ("Kostenlose
+  Vorschau") oberhalb des EU-AI-Act-Haftungsausschlusses informiert jetzt
+  schon beim ersten Öffnen über das Limit, statt Nutzer erst beim
+  Fehlschlagen zu überraschen.
+
 ## [1.24.3] – 2026-08-15
 
 ### Geändert

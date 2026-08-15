@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.24.3)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.24.4)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -44,7 +44,9 @@ Von dort an kamen die Hürden meist erst im Betrieb ans Licht, nicht am Reißbre
   auch lebenslang pro IP mit (`lifetimeCount`) und blockt ab `DEMO_LIFETIME_MAX`
   (30) mit einer eigenen, nicht wiederholbaren 403-Antwort statt des üblichen
   429 — der Client versucht 429 automatisch erneut, ein aufgebrauchtes
-  Demo-Kontingent soll aber sofort und mit Klartext-Meldung enden.
+  Demo-Kontingent soll aber sofort und mit Klartext-Meldung enden. Damit
+  Erstbesucher das nicht erst beim Fehlschlagen erfahren, weist ein
+  wegklickbarer Info-Banner schon beim ersten Öffnen der App auf das Limit hin.
 - **Zwei Gemini-Modelle wurden während der Entwicklung abgeschaltet**
   (`gemini-2.5-flash-preview-09-2025`, danach `gemini-2.5-flash`) — die App lief
   jeweils plötzlich ins Leere. Seitdem zeigt `gemini-flash-latest` (ein stabiler

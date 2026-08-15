@@ -3,7 +3,7 @@ import {
 Camera, Image, Upload, Wrench, Loader2, Zap, AlertTriangle, CheckCircle,
 Smartphone, FileText, Pipette, Paintbrush, Flower, Hammer, BrickWall, Home,
 Settings, MoreHorizontal, User, Package, Shield, Video, RefreshCw,
-Volume2, VolumeX, List, X, Lock
+Volume2, VolumeX, List, X, Lock, Info
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import {
@@ -363,6 +363,7 @@ const [isStartingFreshSession, setIsStartingFreshSession] = useState(false);
 const [showHistory, setShowHistory] = useState(false); // Steuert das Historien-Modal
 const [showAdmin, setShowAdmin] = useState(false); // Steuert das Admin-Modal (Fehlerreports)
 const [showDisclaimer, setShowDisclaimer] = useState(true); // EU-AI-Act-Haftungsausschluss wegklickbar (pro Sitzung)
+const [showDemoNotice, setShowDemoNotice] = useState(true); // Hinweis auf Demo-Kontingent wegklickbar (pro Sitzung)
 // --- App States ---
 const [selectedImageBase64, setSelectedImageBase64] = useState(null);
 const [problemDescription, setProblemDescription] = useState('');
@@ -1904,6 +1905,25 @@ onClose={() => setShowAdmin(false)}
 </header>
 {/* Haupt-Content-Bereich */}
 <main className="p-4 space-y-6 w-full bg-white/95 backdrop-blur-md shadow-2xl overflow-y-auto">
+{/* DEMO-KONTINGENT-HINWEIS: informiert vorab über das Limit aus DEMO_LIFETIME_MAX
+    in api/gemini.js (aktuell 30 KI-Anfragen/Gerät), statt dass Nutzer erst beim
+    Fehlschlagen der Analyse davon erfahren. Zahl bei Änderung dort synchron halten. */}
+{showDemoNotice && (
+<div className="p-3 bg-blue-50 border-l-4 border-blue-400 text-blue-800 rounded-lg shadow-md flex items-start space-x-3">
+<Info className="w-5 h-5 mt-1 flex-shrink-0 text-blue-500" />
+<div className="flex-grow">
+<p className="font-bold">Kostenlose Vorschau</p>
+<p className="text-xs">Diese Demo ist auf 30 KI-Analysen pro Gerät begrenzt, damit sie für alle Interessierten nutzbar bleibt.</p>
+</div>
+<button
+onClick={() => setShowDemoNotice(false)}
+className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-blue-500 text-white hover:bg-blue-600 transition"
+title="Hinweis ausblenden"
+>
+<X className="w-4 h-4" />
+</button>
+</div>
+)}
 {/* EU AI ACT DISCLAIMER */}
 {showDisclaimer && (
 <div className="p-3 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-lg shadow-md flex items-start space-x-3">
