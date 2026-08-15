@@ -160,18 +160,21 @@ console.error('App-Check-Token konnte nicht geholt werden:', e);
 for (let i = 0; i < maxRetries; i++) {
 try {
 const response = await fetch(url, requestOptions);
-if (!response.ok) {
-// Bei 429 (Too Many Requests) oder 5xx (Serverfehler) versuchen wir es erneut
-if (response.status === 429 || response.status >= 500) {
-throw new Error(`API error: ${response.status}${response.statusText ? ' ' + response.statusText : ''}`, { cause: response.status });
-}
+// Nur 5xx (Serverfehler) automatisch wiederholen. 429 (Rate-Limit) bewusst NICHT:
+// unser eigener Rate-Limiter (api/gemini.js) zählt in einem 60s-Fenster — die paar
+// Sekunden Backoff hier ändern daran nichts, ein Retry würde also garantiert wieder
+// scheitern (und den Verbrauch des Fensters durch mehrere Aufrufer sogar verschärfen).
+// Response bei 429/4xx wird direkt zurückgegeben, damit der Aufrufer die
+// Klartext-Fehlermeldung aus dem Response-Body lesen kann.
+if (!response.ok && response.status >= 500 && i < maxRetries - 1) {
+const delay = Math.pow(2, i) * 1000;
+await new Promise(resolve => setTimeout(resolve, delay));
+continue;
 }
 return response;
 } catch (error) {
-// Netzwerkfehler (kein HTTP-Status vorhanden) sowie 429/5xx sind behebbar und werden
-// wiederholt; alles andere (z.B. 401, 404) brechen wir sofort ab
-const isRetryable = error.cause === undefined || error.cause === 429 || error.cause >= 500;
-if (i === maxRetries - 1 || !isRetryable) {
+// Netzwerkfehler (fetch selbst wirft, kein HTTP-Status vorhanden) sind behebbar
+if (i === maxRetries - 1) {
 throw error;
 }
 // Exponentieller Backoff
@@ -179,7 +182,6 @@ const delay = Math.pow(2, i) * 1000;
 await new Promise(resolve => setTimeout(resolve, delay));
 }
 }
-throw new Error("Maximum retries reached.");
 };
 // Komponente für einen einzelnen Handwerker-Button
 // Nutzt eine per Button gesetzte CSS-Variable statt fixer Tailwind-Farbklassen,
@@ -545,7 +547,15 @@ body: JSON.stringify(payload)
 });
 const responseText = await response.text();
 if (!response.ok || !responseText) {
-throw new Error(responseText || `API-Fehler mit Status: ${response.status}`);
+// Server-Fehler (z.B. Rate-Limit) kommen als {"error": "..."} —
+// nur die Klartext-Message anzeigen statt des rohen JSON-Strings.
+let errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
+try {
+errorMsg = JSON.parse(responseText)?.error || errorMsg;
+} catch {
+// kein JSON (z.B. Netzwerkfehler-Text) -> Rohtext beibehalten
+}
+throw new Error(errorMsg);
 }
 const result = JSON.parse(responseText);
 const text = result.candidates?.[0]?.content?.parts?.[0]?.text;

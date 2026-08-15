@@ -8,6 +8,24 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.24.2] – 2026-08-15
+
+### Geändert
+- **`fetchWithRetry` wiederholt 429-Antworten nicht mehr automatisch.**
+  Grund: Der serverseitige Rate-Limiter (`api/gemini.js`) zählt in einem
+  festen 60-Sekunden-Fenster; die bisherigen bis zu 3 automatischen Retries
+  (≈7s Backoff) lagen garantiert noch im selben Fenster und scheiterten
+  daher immer erneut — sie verschärften den Verbrauch des Fensters sogar
+  zusätzlich, wenn mehrere Tools kurz hintereinander liefen (Hauptanalyse +
+  Zusatz-Tools). Beobachtet als "auffällig funktioniert ein erneuter Klick
+  auf 'Vorlesen' einfach so" — der zweite, manuelle Klick kam schlicht erst,
+  nachdem das Rate-Limit-Fenster zurückgesetzt war. Nur echte 5xx-Serverfehler
+  und Netzwerkfehler werden weiterhin automatisch wiederholt; bei 429 (und
+  anderen 4xx) bekommt der Aufrufer die Antwort direkt und liest die
+  Klartext-Fehlermeldung aus dem Response-Body — analog dazu jetzt auch in
+  `callGeminiTtsSummaryAPI` die gleiche JSON-Fehler-Klartext-Extraktion wie
+  bei den übrigen 5 API-Aufrufern.
+
 ## [1.24.1] – 2026-08-15
 
 ### Geändert

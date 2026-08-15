@@ -53,6 +53,14 @@ _Aktuell keine offenen Einträge._
   einzelnen Aufrufer.
 - **Lösung:** Meldung ergänzt `response.status` (immer vorhanden) neben dem
   ggf. leeren `statusText`, siehe CHANGELOG `[1.24.1]`.
+- **Nachtrag (V1.24.2):** Nutzerbeobachtung — ein erneuter manueller Klick auf
+  "Vorlesen" funktioniert direkt danach oft ohne ersichtlichen Grund. Ursache:
+  `fetchWithRetry` wiederholte 429-Antworten automatisch (bis zu 3× mit
+  Backoff), lag damit aber garantiert noch im selben 60s-Rate-Limit-Fenster
+  des Servers (`api/gemini.js`) und scheiterte deshalb immer erneut — der
+  spätere manuelle Klick traf dagegen oft schon auf ein zurückgesetztes
+  Fenster. 429 wird jetzt nicht mehr automatisch wiederholt, siehe CHANGELOG
+  `[1.24.2]`.
 
 ### 2. gemini-vision-api: "Fehler bei der KI-Anfrage oder leere Antwort." / FUNCTION_PAYLOAD_TOO_LARGE
 
