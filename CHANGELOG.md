@@ -8,6 +8,24 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.26.1] – 2026-08-15
+
+### Behoben
+- **Google-Anmeldung verlangte bei jedem Login zwei Popups.** Sobald ein
+  Google-Konto einmal per `linkWithPopup` mit einer echten UID verknüpft
+  wurde, kann es nie wieder mit einer anderen (neuen anonymen) Sitzung
+  verknüpft werden — jede künftige Anmeldung startete deshalb zwangsläufig
+  mit einem `auth/credential-already-in-use`-Fehler, den der Code bisher mit
+  einem zweiten, kompletten `signInWithPopup`-Durchlauf auffing. Für
+  wiederkehrende Google-Nutzer (z.B. den neuen Admin-Zugang, siehe V1.26.0)
+  bedeutete das strukturell bei jeder Anmeldung zwei Google-Fenster
+  nacheinander. Lösung: Das im ersten (fehlgeschlagenen) Link-Versuch
+  bereits erteilte OAuth-Credential wird jetzt per
+  `GoogleAuthProvider.credentialFromError()` ausgelesen und direkt mit
+  `signInWithCredential()` zur Anmeldung verwendet — kein zweites Popup mehr
+  nötig. `signInWithPopup` bleibt nur als Fallback, falls Firebase
+  ausnahmsweise kein Credential mitliefert.
+
 ## [1.26.0] – 2026-08-15
 
 ### Hinzugefügt

@@ -8,7 +8,7 @@ Volume2, VolumeX, List, X, Lock, Info
 import { initializeApp } from 'firebase/app';
 import {
 getAuth, signInAnonymously, onAuthStateChanged, signOut,
-GoogleAuthProvider, signInWithPopup, linkWithPopup, getIdToken, getIdTokenResult
+GoogleAuthProvider, signInWithPopup, linkWithPopup, signInWithCredential, getIdToken, getIdTokenResult
 } from 'firebase/auth';
 import {
 initializeAppCheck, ReCaptchaV3Provider, getToken as getAppCheckToken
@@ -1752,9 +1752,17 @@ setShowProfile(false);
 if (e.code === 'auth/credential-already-in-use') {
 // Das Google-Konto ist bereits mit einem anderen (echten) Nutzer
 // verknüpft: dort stattdessen anmelden. Die bisherige anonyme Sitzung
-// samt ihrer lokalen Historie geht dabei verloren.
+// samt ihrer lokalen Historie geht dabei verloren. Tritt ab dem ersten
+// erfolgreichen Link bei JEDER künftigen Anmeldung erneut auf (ein
+// Google-Konto lässt sich nie ein zweites Mal verknüpfen) — deshalb NICHT
+// per erneutem signInWithPopup (zweites, störendes Google-Popup bei jedem
+// Login), sondern mit dem aus dem fehlgeschlagenen Link-Versuch bereits
+// vorliegenden Credential direkt anmelden.
 try {
-const result = await signInWithPopup(auth, provider);
+const credential = GoogleAuthProvider.credentialFromError(e);
+const result = credential
+? await signInWithCredential(auth, credential)
+: await signInWithPopup(auth, provider); // Fallback, falls Firebase kein Credential mitliefert
 setAuthUser(toAuthUserSnapshot(result.user));
 setShowProfile(false);
 } catch (e2) {
