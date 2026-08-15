@@ -160,6 +160,14 @@ const { token } = await getAppCheckToken(appCheckInstance);
 requestOptions = { ...options, headers: { ...options.headers, 'X-Firebase-AppCheck': token } };
 } catch (e) {
 console.error('App-Check-Token konnte nicht geholt werden:', e);
+// Bisher landete dieser Fehler nur in der Browser-Konsole — für den Admin
+// unsichtbar, obwohl er jede nachfolgende API-Anfrage mit 401 scheitern
+// lässt. queueErrorReport() feuert intern sofort sendBugReportEmail()
+// (fire-and-forget); der Firestore-Eintrag fürs Admin Panel wird beim
+// nächsten flushErrorReports()-Aufruf mitgeschickt (z.B. aus dem
+// catch-Block der aufrufenden API-Funktion, der wegen des fehlenden
+// Tokens ohnehin gleich danach greift).
+queueErrorReport('app-check-token', e);
 }
 }
 for (let i = 0; i < maxRetries; i++) {

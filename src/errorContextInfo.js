@@ -19,6 +19,11 @@ export const ERROR_CONTEXT_INFO = {
     cause: 'Anonyme Anmeldung ist in der Firebase Console nicht aktiviert, oder es gab ein Netzwerkproblem beim Login.',
     fix: 'Firebase Console → Authentication → Sign-in method → prüfen, ob "Anonym" aktiviert ist.',
   },
+  'app-check-token': {
+    label: 'App-Check-Token konnte nicht geholt werden',
+    cause: 'reCAPTCHA v3 lieferte keinen gültigen Token — z.B. weil die aufgerufene Domain nicht bei reCAPTCHA hinterlegt ist, VITE_RECAPTCHA_SITE_KEY nicht zum in Firebase App Check registrierten Key passt, oder die Web-App dort noch nicht (mit diesem Key) registriert ist. Jede nachfolgende /api/gemini-Anfrage scheitert dadurch mit 401.',
+    fix: 'Fehlermeldung/Stacktrace unten prüfen (enthält meist einen Firebase-Fehlercode wie appCheck/…); Domain in der reCAPTCHA-Site-Konfiguration (google.com/recaptcha/admin) mit der tatsächlichen Vercel-Domain abgleichen und mit VITE_RECAPTCHA_SITE_KEY in Vercel vergleichen.',
+  },
   'gemini-vision-api': {
     label: 'Bildanalyse (Haupt-KI-Aufruf) fehlgeschlagen',
     cause: '/api/gemini nicht erreichbar, Gemini-API-Fehler/Timeout, oder Antwort nicht im erwarteten Format.',

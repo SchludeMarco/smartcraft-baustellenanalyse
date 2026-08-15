@@ -8,6 +8,24 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.25.3] – 2026-08-15
+
+### Behoben
+- **App-Check-Token-Fehler waren für den Admin komplett unsichtbar.**
+  Problem: Schlägt `getAppCheckToken()` in `fetchWithRetry` fehl (z.B. weil
+  die Domain nicht bei reCAPTCHA hinterlegt ist oder die Web-App noch nicht
+  in Firebase App Check registriert war), landete das bisher nur per
+  `console.error` in der Browser-Konsole — jede nachfolgende
+  `/api/gemini`-Anfrage scheiterte danach mit 401, ohne dass im Admin-Bereich
+  (`AdminPanel.jsx`) irgendein Hinweis darauf zu sehen war. Lösung: Der
+  Fehler wird jetzt zusätzlich per `queueErrorReport('app-check-token', e)`
+  erfasst (neuer Kontext in `errorContextInfo.js` mit Ursachen-/Lösungshinweis)
+  und landet dadurch wie jeder andere Fehler im Admin Panel und (sofern
+  `RESEND_API_KEY` konfiguriert ist) per Mail. **Nebenbefund:** `RESEND_API_KEY`
+  ist im aktuellen Vercel-Projekt nicht gesetzt — die automatische
+  Mail-Benachrichtigung bei Fehlerreports läuft dadurch aktuell ins Leere
+  (Firestore/Admin-Panel-Weg ist davon unabhängig und funktioniert).
+
 ## [1.25.2] – 2026-08-15
 
 ### Behoben

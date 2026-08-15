@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.25.2)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.25.3)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -251,6 +251,12 @@ Environment Variables in den Vercel-Projekteinstellungen:
   Projekteinstellungen → Dienstkonten → neuen privaten Schlüssel generieren)
   und `VITE_RECAPTCHA_SITE_KEY` (Firebase Console → App Check → Web-App
   registrieren → reCAPTCHA v3) einmalig ergänzen, siehe Env-Var-Tabelle oben.
+- **`RESEND_API_KEY` ist im deployten Projekt ebenfalls nicht gesetzt** —
+  die in `api/report-bug.js`/`errorReporting.js` beschriebene automatische
+  Mail-Benachrichtigung bei Fehlerreports läuft dadurch aktuell ins Leere.
+  Der Firestore-Weg (Admin Panel, `AdminPanel.jsx`) ist davon unabhängig und
+  bleibt die verlässliche Quelle; die Mail ist nur ein zusätzlicher
+  Sofort-Hinweis, siehe Kommentar in `errorReporting.js`.
 - **TTS (Sprachausgabe)** liest die KI-Diagnose auf Wunsch vor — praktisch auf der
   Baustelle, wenn beide Hände beschäftigt sind. Läuft serverseitig über einen
   eigenen Proxy (`api/tts.js`, gleiches Muster wie `api/gemini.js`) zur Google
