@@ -8,6 +8,18 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.26.6] – 2026-08-15
+
+### Hinzugefügt
+- **Linkvorschau für WhatsApp/Facebook/Twitter beim Teilen des Links.**
+  `index.html` hatte bislang keine Open-Graph-/Twitter-Card-Meta-Tags — ein
+  geteilter Link zeigte in Chat-Apps nur eine nackte URL ohne Titel, Text
+  oder Bild. Ergänzt: `og:title`, `og:description`, `og:image`,
+  `twitter:card` sowie eine normale `<meta name="description">`. Das
+  Vorschaubild (`public/og-image.png`, 1200×630px) ist ein echter
+  Screenshot der App (Kopfbereich + Berufsauswahl, ohne die Hinweis-Banner)
+  statt eines gestalteten Logos.
+
 ## [1.26.5] – 2026-08-15
 
 ### Behoben
