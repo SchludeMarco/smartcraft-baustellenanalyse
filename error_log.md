@@ -105,6 +105,30 @@ _Aktuell keine offenen Einträge._
 - **Lösung:** `apiTtsUrl` in die Bedingung aufgenommen, siehe CHANGELOG
   `[1.26.2]`.
 
+### 4. gemini-vision-api (und weitere KI-Tools): "[object Object]"
+
+- **Status:** Gelöst (V1.26.3)
+- **Kontext:** `gemini-vision-api` (`callGeminiVisionAPI` in `src/App.jsx`) —
+  strukturell identischer Code auch in `callGeminiTtsSummaryAPI`,
+  `callGeminiMaterialsAPI`, `callGeminiSafetyAPI`, `callGeminiClientReportAPI`,
+  `callGeminiVideoSearch`.
+- **Nachricht:** "[object Object]" (15.8.2026, 13:31 Uhr, V1.26.1,
+  Android/Chrome Mobile).
+- **Ursache:** `api/gemini.js` reicht Gemini-eigene Fehlerantworten unverändert
+  durch (`upstream.text()` → `res.send(text)`). Googles API-Fehlerformat ist
+  `{"error": {"code":…, "message":"…", "status":"…"}}` — das `error`-Feld ist
+  dort ein OBJEKT, während eigene Server-Fehler in `api/gemini.js`
+  `{"error": "Text"}` als String liefern. Der Client las `.error` bislang ohne
+  diese Unterscheidung und reichte es direkt an `new Error(errorMsg)` weiter;
+  bei einem Objekt stringifiziert JS das automatisch zu "[object Object]" —
+  der eigentliche Gemini-Fehlertext (z.B. Safety-Block, ungültige Anfrage,
+  Kontingent) ging dabei verloren. Betraf jeden der sechs `/api/gemini`-Aufrufe
+  im Client gleichermaßen, nicht nur die Hauptanalyse.
+- **Lösung:** Neuer gemeinsamer Helfer `extractApiErrorMessage()` in
+  `src/App.jsx` unterscheidet String- und Objekt-Fehler (nutzt bei Objekten
+  `.message`) und ersetzt die bisher sechsfach duplizierte Extraktion, siehe
+  CHANGELOG `[1.26.3]`.
+
 <!--
 ### N. Kurzbeschreibung
 

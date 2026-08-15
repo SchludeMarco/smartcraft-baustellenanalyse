@@ -212,6 +212,24 @@ await new Promise(resolve => setTimeout(resolve, delay));
 }
 }
 };
+// Liest die Fehlermeldung aus einer /api/gemini-Fehlerantwort. Eigene
+// Server-Fehler (api/gemini.js) liefern {"error": "Text"} als String — von
+// Gemini durchgereichte Upstream-Fehler (Passthrough im selben Handler)
+// kommen dagegen im Google-API-Format {"error": {"code":…, "message":"…",
+// "status":"…"}} als OBJEKT. Ohne diese Unterscheidung landete das rohe
+// Objekt in new Error(...) und wurde zu "[object Object]" stringifiziert
+// (siehe error_log.md).
+const extractApiErrorMessage = (responseText, fallback) => {
+try {
+const err = JSON.parse(responseText)?.error;
+if (typeof err === 'string') return err;
+if (err && typeof err === 'object') return err.message || JSON.stringify(err);
+return fallback;
+} catch {
+// kein JSON (z.B. Netzwerkfehler-Text) -> Fallback (i.d.R. der Rohtext)
+return fallback;
+}
+};
 // Komponente für einen einzelnen Handwerker-Button
 // Nutzt eine per Button gesetzte CSS-Variable statt fixer Tailwind-Farbklassen,
 // damit Fläche/Hover/Ring aus der gedeckten TRADE_THEMES-Palette kommen und
@@ -588,12 +606,7 @@ const responseText = await response.text();
 if (!response.ok || !responseText) {
 // Server-Fehler (z.B. Rate-Limit) kommen als {"error": "..."} —
 // nur die Klartext-Message anzeigen statt des rohen JSON-Strings.
-let errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
-try {
-errorMsg = JSON.parse(responseText)?.error || errorMsg;
-} catch {
-// kein JSON (z.B. Netzwerkfehler-Text) -> Rohtext beibehalten
-}
+const errorMsg = extractApiErrorMessage(responseText, responseText || `API-Fehler mit Status: ${response.status}`);
 throw new Error(errorMsg);
 }
 const result = JSON.parse(responseText);
@@ -954,12 +967,7 @@ const responseText = await response.text();
 if (!response.ok || !responseText) {
 // Server-Fehler (z.B. Demo-Kontingent, Rate-Limit) kommen als {"error": "..."} —
 // nur die Klartext-Message anzeigen statt des rohen JSON-Strings.
-let errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
-try {
-errorMsg = JSON.parse(responseText)?.error || errorMsg;
-} catch {
-// kein JSON (z.B. Netzwerkfehler-Text) -> Rohtext beibehalten
-}
+const errorMsg = extractApiErrorMessage(responseText, responseText || `API-Fehler mit Status: ${response.status}`);
 console.error("API Response Fehler:", errorMsg);
 throw new Error(errorMsg);
 }
@@ -1018,12 +1026,7 @@ const responseText = await response.text();
 if (!response.ok || !responseText) {
 // Server-Fehler (z.B. Demo-Kontingent, Rate-Limit) kommen als {"error": "..."} —
 // nur die Klartext-Message anzeigen statt des rohen JSON-Strings.
-let errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
-try {
-errorMsg = JSON.parse(responseText)?.error || errorMsg;
-} catch {
-// kein JSON (z.B. Netzwerkfehler-Text) -> Rohtext beibehalten
-}
+const errorMsg = extractApiErrorMessage(responseText, responseText || `API-Fehler mit Status: ${response.status}`);
 console.error("API Response Fehler:", errorMsg);
 throw new Error(errorMsg);
 }
@@ -1077,12 +1080,7 @@ const responseText = await response.text();
 if (!response.ok || !responseText) {
 // Server-Fehler (z.B. Demo-Kontingent, Rate-Limit) kommen als {"error": "..."} —
 // nur die Klartext-Message anzeigen statt des rohen JSON-Strings.
-let errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
-try {
-errorMsg = JSON.parse(responseText)?.error || errorMsg;
-} catch {
-// kein JSON (z.B. Netzwerkfehler-Text) -> Rohtext beibehalten
-}
+const errorMsg = extractApiErrorMessage(responseText, responseText || `API-Fehler mit Status: ${response.status}`);
 console.error("API Response Fehler:", errorMsg);
 throw new Error(errorMsg);
 }
@@ -1129,12 +1127,7 @@ const responseText = await response.text();
 if (!response.ok || !responseText) {
 // Server-Fehler (z.B. Demo-Kontingent, Rate-Limit) kommen als {"error": "..."} —
 // nur die Klartext-Message anzeigen statt des rohen JSON-Strings.
-let errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
-try {
-errorMsg = JSON.parse(responseText)?.error || errorMsg;
-} catch {
-// kein JSON (z.B. Netzwerkfehler-Text) -> Rohtext beibehalten
-}
+const errorMsg = extractApiErrorMessage(responseText, responseText || `API-Fehler mit Status: ${response.status}`);
 console.error("API Response Fehler:", errorMsg);
 throw new Error(errorMsg);
 }
@@ -1185,12 +1178,7 @@ const callGeminiVideoSearch = useCallback(async () => {
     if (!response.ok || !responseText) {
       // Server-Fehler (z.B. Demo-Kontingent, Rate-Limit) kommen als {"error": "..."} —
       // nur die Klartext-Message anzeigen statt des rohen JSON-Strings.
-      let errorMsg = responseText || `API-Fehler mit Status: ${response.status}`;
-      try {
-        errorMsg = JSON.parse(responseText)?.error || errorMsg;
-      } catch {
-        // kein JSON (z.B. Netzwerkfehler-Text) -> Rohtext beibehalten
-      }
+      const errorMsg = extractApiErrorMessage(responseText, responseText || `API-Fehler mit Status: ${response.status}`);
       console.error("API Response Fehler:", errorMsg);
       throw new Error(errorMsg);
     }

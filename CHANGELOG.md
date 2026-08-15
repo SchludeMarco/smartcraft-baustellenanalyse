@@ -8,6 +8,24 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.26.3] – 2026-08-15
+
+### Behoben
+- **KI-Fehlermeldungen zeigten teils nur "[object Object]".** Gemeldet über
+  den Admin-Bereich (Kontext `gemini-vision-api`, siehe `error_log.md`).
+  `api/gemini.js` reicht Gemini-eigene Fehlerantworten unverändert durch —
+  Googles API-Fehlerformat liefert `error` dort als Objekt
+  (`{code, message, status}`), während eigene Server-Fehler `error` als
+  String liefern. Der Client behandelte beide Fälle bisher gleich und übergab
+  das Objekt direkt an `new Error(...)`, was JS automatisch zu
+  "[object Object]" stringifiziert — der eigentliche Gemini-Fehlertext ging
+  verloren. Betraf alle sechs `/api/gemini`-Aufrufstellen (Hauptanalyse,
+  Materialliste, Sicherheitshinweise, Kundenbericht, Video-Suche,
+  TTS-Kurzfassung) gleichermaßen. Ein neuer gemeinsamer Helfer
+  `extractApiErrorMessage()` unterscheidet jetzt String- und Objekt-Fehler
+  (nutzt bei Objekten `.message`) und ersetzt die zuvor sechsfach
+  duplizierte, fehleranfällige Extraktion.
+
 ## [1.26.2] – 2026-08-15
 
 ### Behoben
