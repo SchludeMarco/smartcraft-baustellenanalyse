@@ -8,6 +8,16 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.24.3] – 2026-08-15
+
+### Geändert
+- **UI-Begriff "Gewerk" durch "Beruf" ersetzt.** Grund: "Gewerk" wirkt als
+  Bau-/Ausschreibungsjargon sperrig, gerade für Privatnutzer ohne
+  Handwerksausbildung. "Beruf" ist eingängiger und passt genauso zur
+  bestehenden Auswahl (Klempner, Elektriker, ...). Betrifft alle
+  UI-Texte in `App.jsx` (Berufsauswahl, PDF-Export, YouTube-Suche,
+  Verlaufsliste) sowie die entsprechenden Stellen in `README.md`.
+
 ## [1.24.2] – 2026-08-15
 
 ### Geändert

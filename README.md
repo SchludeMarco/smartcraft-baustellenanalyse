@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.24.2)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.24.3)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -94,12 +94,12 @@ Diagnose-Engine hilft in beiden Situationen weiter:
 - **Auf der Baustelle / im Berufsalltag** — als schnelle Zweitmeinung, wenn der
   passende Kollege gerade nicht erreichbar ist: ein untypischer Wasserfleck an der
   Decke, ein Riss, dessen Ursache unklar ist, eine Installation, die vom Standard
-  abweicht. Gewerk auswählen, Foto oder Beschreibung rein, fertig ist eine Einschätzung
+  abweicht. Beruf auswählen, Foto oder Beschreibung rein, fertig ist eine Einschätzung
   auf Fachniveau — inklusive Materialliste für den Baumarkt-Einkauf und
   Kundenbericht für die Übergabe an den Auftraggeber.
 - **Zu Hause / privat** — genauso nutzbar, ganz ohne Handwerksausbildung: der Riss im
   Verputz, der tropfende Wasserhahn, die Pflanze, die trotz Gießen eingeht, der
-  Lichtschalter, der nicht mehr reagiert. Einfach das Gewerk wählen, das am ehesten
+  Lichtschalter, der nicht mehr reagiert. Einfach den Beruf wählen, der am ehesten
   passt (z.B. Gärtner, Klempner, Elektriker, Maler), und die Diagnose liefert eine
   nachvollziehbare Einschätzung, bevor überhaupt ein Handwerker gerufen wird — inklusive
   Sicherheits-Check, der ehrlich sagt, wann eine Aufgabe besser einem Fachmann
@@ -107,18 +107,18 @@ Diagnose-Engine hilft in beiden Situationen weiter:
 
 ## Was die App kann
 
-**1. Gewerk auswählen** — Klempner, Elektriker, Maler, Gärtner, Zimmerer, Mechaniker,
+**1. Beruf auswählen** — Klempner, Elektriker, Maler, Gärtner, Zimmerer, Mechaniker,
 Maurer, Dachdecker, Allround-Handwerker oder Sonstiges. Die Auswahl fließt direkt in
 die KI-Diagnose ein und wird pro Nutzer gemerkt (Firestore-Profil). Für Privatnutzer
 ist "Allround-Handwerker" oder "Sonstiges" eine gute Wahl, wenn sich das Problem
-keinem klassischen Gewerk eindeutig zuordnen lässt.
+keinem klassischen Beruf eindeutig zuordnen lässt.
 
 **2. Problem dokumentieren** — Foto der Problemstelle hochladen, eine Textbeschreibung
 eintippen, oder beides. Mindestens eines der beiden reicht, damit die Analyse startet.
 Ein Foto vom Smartphone direkt vor Ort ist oft aussagekräftiger als jede Beschreibung.
 
 **3. KI-Diagnose** — Gemini analysiert Bild und/oder Beschreibung im Kontext des
-gewählten Gewerks und liefert eine präzise, schrittweise Lösung, formuliert für einen
+gewählten Berufs und liefert eine präzise, schrittweise Lösung, formuliert für einen
 erfahrenen Handwerker (kein Laien-Geschwurbel, direkt und praxisnah) — verständlich
 genug, dass auch Laien ihr zuhause folgen können.
 
@@ -150,7 +150,7 @@ App eine Einschätzung, keine Freigabe.
 
 ## Ablauf in der Praxis
 
-1. Gewerk auswählen (oder aus dem gemerkten Profil übernehmen)
+1. Beruf auswählen (oder aus dem gemerkten Profil übernehmen)
 2. Foto machen und/oder Problem kurz beschreiben
 3. Diagnose abwarten (wenige Sekunden)
 4. Bei Bedarf Materialliste, Sicherheits-Check und/oder Kundenbericht per Knopfdruck
@@ -258,9 +258,9 @@ Environment Variables in den Vercel-Projekteinstellungen:
   sofort anonym (keine Hürde vor der ersten Nutzung) und kann die Sitzung im
   Profil-Menü freiwillig per Google-Konto "aufwerten". Wer das nicht tut, bleibt
   geräteweise anonym wie bisher — für die geplante Android-App reicht das bereits.
-- **Gewerke-Sondereditionen & dedizierter Privat-Modus** sind als nächste große
-  Ausbaustufe geplant: eigene Editionen pro Gewerk (z.B. Sm@rtCraft Elektro,
+- **Berufs-Sondereditionen & dedizierter Privat-Modus** sind als nächste große
+  Ausbaustufe geplant: eigene Editionen pro Beruf (z.B. Sm@rtCraft Elektro,
   Sm@rtCraft Garten) sowie eine eigene "Sm@rtCraft Zuhause"-Variante mit spürbar
   konservativerer Sicherheitsschwelle für sicherheitsrelevante Arbeiten durch Laien.
-  Heute funktioniert Privatnutzung bereits über die bestehende Gewerke-Auswahl, aber
+  Heute funktioniert Privatnutzung bereits über die bestehende Berufsauswahl, aber
   ohne eigene, auf Laien zugeschnittene Führung.

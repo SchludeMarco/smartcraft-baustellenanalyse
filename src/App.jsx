@@ -52,10 +52,10 @@ properties: {
 required: ["category", "item", "quantity"]
 }
 };
-// Gedeckte, ruhige Farbwelt je Gewerk (kein "Warnfarben"-Rot, keine grellen
-// Töne) — jedes Gewerk hat einen Akzent-, Hover- und einen hellen "Soft"-Ton
+// Gedeckte, ruhige Farbwelt je Beruf (kein "Warnfarben"-Rot, keine grellen
+// Töne) — jeder Beruf hat einen Akzent-, Hover- und einen hellen "Soft"-Ton
 // für Flächen/Badges. Die App übernimmt diese Palette global, sobald ein
-// Gewerk gewählt ist (siehe `theme` in der App-Komponente).
+// Beruf gewählt ist (siehe `theme` in der App-Komponente).
 const TRADE_THEMES = {
 "Klempner": { accent: "#4F7396", accentDark: "#3E5C79", accentSoft: "#E7EDF2" },
 "Elektriker": { accent: "#A67C40", accentDark: "#856434", accentSoft: "#F1E9DB" },
@@ -69,7 +69,7 @@ const TRADE_THEMES = {
 "Sonstig...": { accent: "#7C7670", accentDark: "#635E59", accentSoft: "#ECEBE9" },
 };
 const DEFAULT_TRADE = "Allround-Handwerker";
-// Liste der Gewerke mit Icons für die visuelle Auswahl (Farben kommen aus TRADE_THEMES)
+// Liste der Berufe mit Icons für die visuelle Auswahl (Farben kommen aus TRADE_THEMES)
 const TRADE_ICONS = [
 { name: "Klempner", icon: Pipette },
 { name: "Elektriker", icon: Zap },
@@ -186,7 +186,7 @@ await new Promise(resolve => setTimeout(resolve, delay));
 // Komponente für einen einzelnen Handwerker-Button
 // Nutzt eine per Button gesetzte CSS-Variable statt fixer Tailwind-Farbklassen,
 // damit Fläche/Hover/Ring aus der gedeckten TRADE_THEMES-Palette kommen und
-// sich beim Wechsel des Gewerks weich (transition-colors) einblenden.
+// sich beim Wechsel des Berufs weich (transition-colors) einblenden.
 const TradeButton = ({ name, icon: Icon, theme, isSelected, onClick }) => (
 <button
 onClick={() => onClick(name)}
@@ -280,7 +280,7 @@ onClick={() => onSelect(item)} // Ladefunktion wird bei Klick ausgelöst
 {item.timestamp ? new Date(item.timestamp.seconds * 1000).toLocaleString('de-DE') : 'Unbekanntes Datum'}
 </p>
 <p className="text-sm font-semibold text-gray-800 truncate max-w-[80%]">
-{item.problemDescription.trim() || `Analyse für Gewerk: ${item.selectedTrade}`}
+{item.problemDescription.trim() || `Analyse für Beruf: ${item.selectedTrade}`}
 </p>
 <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
 {item.selectedTrade}
@@ -371,9 +371,9 @@ const [sources, setSources] = useState([]);
 const [isAnalyzing, setIsAnalyzing] = useState(false);
 const [error, setError] = useState(null);
 const [selectedTrade, setSelectedTradeState] = useState('Allround-Handwerker');
-// App-weites Farbthema: folgt dem gewählten Gewerk (gedeckte Töne, siehe
+// App-weites Farbthema: folgt dem gewählten Beruf (gedeckte Töne, siehe
 // TRADE_THEMES). Header, CTAs und Akzent-Icons lesen diese CSS-Variablen;
-// zusammen mit transition-colors ergibt sich beim Gewerkwechsel ein weicher
+// zusammen mit transition-colors ergibt sich beim Berufswechsel ein weicher
 // Farbwechsel statt eines harten Umschaltens.
 const theme = useMemo(
 () => TRADE_THEMES[selectedTrade] || TRADE_THEMES[DEFAULT_TRADE],
@@ -807,7 +807,7 @@ const profileRef = doc(db, 'artifacts', appId, 'users', userId, 'profile', 'data
 try {
 await setDoc(profileRef, { preferredTrade: trade }, { merge: true });
 } catch (e) {
-console.error("Fehler beim Speichern des Gewerkes:", e);
+console.error("Fehler beim Speichern des Berufs:", e);
 }
 }, [db, userId, appId]);
 useEffect(() => {
@@ -1100,7 +1100,7 @@ const callGeminiVideoSearch = useCallback(async () => {
   if (!solutionText) return;
   setIsGeneratingVideos(true);
   setVideoLinks(null);
-  const userQuery = `Finde die besten 3 bis 5 YouTube-Video-Anleitungen für diese Lösung im Gewerk ${selectedTrade}: ${solutionText}`;
+  const userQuery = `Finde die besten 3 bis 5 YouTube-Video-Anleitungen für diese Lösung im Beruf ${selectedTrade}: ${solutionText}`;
   const payload = {
     contents: [{ parts: [{ text: userQuery }] }],
     systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION_VIDEO_FINAL }] },
@@ -1177,7 +1177,7 @@ const problemHtml = problemDescription.trim()
 ? `<p class="mt-2 text-sm text-gray-600"><strong>Problembeschreibung:</strong> ${problemDescription.trim()}</p>`
 : '';
 const tradeHtml = selectedTrade
-? `<p class="meta"><strong>Gewerk:</strong> ${selectedTrade}</p>`
+? `<p class="meta"><strong>Beruf:</strong> ${selectedTrade}</p>`
 : '';
 // Konvertiere Markdown-Formatierung in einfache HTML-Tags
 const solutionHtml = solutionText
@@ -1570,7 +1570,7 @@ Kundenbericht & Nächste Schritte
 <button
 onClick={handleExportPdf}
 disabled={!solutionText || isGeneratingMaterials || isGeneratingSafety || isGeneratingVideos || isGeneratingReport}
-// Primärfarbe folgt dem gewählten Gewerk
+// Primärfarbe folgt dem gewählten Beruf
 className="flex items-center px-4 py-2 bg-(--accent) text-white font-semibold rounded-xl shadow-md hover:bg-(--accent-dark) transition-colors duration-500 ease-in-out transform active:scale-[0.98]"
 >
 <FileText className="w-4 h-4 mr-2" />
@@ -1582,7 +1582,7 @@ Als PDF exportieren
 }
 // Standard-Willkommensmeldung
 return (
-// Akzent (Rahmen & Icon) folgt dem gewählten Gewerk
+// Akzent (Rahmen & Icon) folgt dem gewählten Beruf
 <div className="p-8 text-center text-gray-500 bg-white rounded-xl shadow-inner border-4 border-dashed border-(--accent-soft) transition-colors duration-700 ease-in-out">
 <Smartphone className="w-8 h-8 mx-auto text-(--accent) mb-3 transition-colors duration-700 ease-in-out" />
 <p className="font-semibold text-lg text-gray-800">Starten Sie Ihre Bauanalyse</p>
@@ -1597,7 +1597,7 @@ Um die Analyse zu starten, benötigen Sie **eines** der folgenden Elemente:
 <span className='font-bold text-(--accent) mr-1 transition-colors duration-500 ease-in-out'>2.</span> Eine detaillierte Problembeschreibung **(Abschnitt 2)**
 </li>
 </ul>
-<p className="text-xs mt-4 text-gray-500">Wählen Sie zuerst Ihr Gewerk (Abschnitt 1) für eine präzisere Diagnose.</p>
+<p className="text-xs mt-4 text-gray-500">Wählen Sie zuerst Ihren Beruf (Abschnitt 1) für eine präzisere Diagnose.</p>
 </div>
 );
 }, [isAnalyzing, error, clearError, solutionText, handleExportPdf, materialList, safetyTips, videoLinks, clientReport, isGeneratingMaterials, isGeneratingSafety, isGeneratingVideos, isGeneratingReport, callGeminiMaterialsAPI, callGeminiSafetyAPI, callGeminiVideoSearch, callGeminiClientReportAPI, selectedImageBase64, problemDescription, isTtsPlaying, isTtsLoading, ttsGender, ttsMode, isGeneratingTtsShort, handleToggleTts, theme]);
@@ -1720,7 +1720,7 @@ onClick={e => e.stopPropagation()}
 >
 <div className="flex justify-between items-center border-b pb-3 mb-4">
 <h3 className="text-xl font-bold text-gray-800 flex items-center">
-{/* Profil-Icon folgt der Gewerk-Akzentfarbe */}
+{/* Profil-Icon folgt der Berufs-Akzentfarbe */}
 <User className="w-5 h-5 mr-2 text-(--accent) transition-colors duration-500 ease-in-out" />
 {isGoogleUser ? 'Mein Konto' : 'Anonyme Sitzung'}
 </h3>
@@ -1888,7 +1888,7 @@ appId={appId}
 onClose={() => setShowAdmin(false)}
 />
 )}
-{/* Header mit Profil-Button - Farbe folgt dem gewählten Gewerk (weicher Übergang) */}
+{/* Header mit Profil-Button - Farbe folgt dem gewählten Beruf (weicher Übergang) */}
 <header className="w-full p-5 bg-(--accent) shadow-2xl relative transition-colors duration-700 ease-in-out">
 <div className="flex items-center justify-between relative z-10">
 <div className="flex items-center space-x-3">
@@ -1921,9 +1921,9 @@ title="Hinweis ausblenden"
 </button>
 </div>
 )}
-{/* 1. Gewerk Auswahl */}
+{/* 1. Beruf Auswahl */}
 <section>
-<h2 className="text-lg font-bold text-gray-700 mb-3 border-b pb-2">1. Gewerk auswählen</h2>
+<h2 className="text-lg font-bold text-gray-700 mb-3 border-b pb-2">1. Beruf auswählen</h2>
 <div className="grid grid-cols-5 gap-2 p-3 bg-gray-100 rounded-xl border border-gray-200 shadow-inner">
 {TRADE_ICONS.map((trade) => (
 <TradeButton
@@ -1937,7 +1937,7 @@ onClick={saveTradePreference} // Speichert direkt in Firestore
 ))}
 </div>
 {selectedTrade && (
-<p className="mt-3 text-sm text-gray-600 font-medium transition-colors duration-500 ease-in-out">Aktuelles Gewerk: <span className="text-(--accent) font-bold">{selectedTrade}</span></p>
+<p className="mt-3 text-sm text-gray-600 font-medium transition-colors duration-500 ease-in-out">Aktueller Beruf: <span className="text-(--accent) font-bold">{selectedTrade}</span></p>
 )}
 </section>
 {/* 2. Problem dokumentieren & analysieren - ANPASSUNG AN BILDSTIL */}
