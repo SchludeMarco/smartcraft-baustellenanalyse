@@ -1397,7 +1397,7 @@ Lösung und Diagnose
     FIREBASE_SERVICE_ACCOUNT_KEY serverseitig nicht gesetzt ist und das
     Tracking damit inaktiv bleibt), zeigt die Zeile ersatzweise nur die
     statische Obergrenze, statt ganz zu verschwinden. */}
-<p className="text-xs text-gray-500 -mt-4">
+<p className="text-xs text-gray-500">
 {demoRemaining !== null
 ? `Noch ${demoRemaining} von ${DEMO_LIFETIME_MAX} kostenlosen KI-Anfragen für dieses Gerät übrig.`
 : `Diese Demo ist auf ${DEMO_LIFETIME_MAX} KI-Anfragen pro Gerät begrenzt.`}

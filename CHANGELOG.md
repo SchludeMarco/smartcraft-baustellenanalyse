@@ -8,6 +8,17 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.25.6] – 2026-08-15
+
+### Behoben
+- **Rest-Kontingent-Hinweis im Analyseergebnis auf dem Smartphone unsichtbar.**
+  Backend liefert den Live-Wert inzwischen korrekt (bestätigt), auf dem Handy
+  war unter "Lösung und Diagnose" trotzdem nichts zu sehen. Verdächtigt:
+  das negative `-mt-4`-Margin auf der Hinweis-Zeile, das sie zu dicht an die
+  Überschrift heranzog und auf schmalen Viewports vermutlich optisch damit
+  verschmelzen ließ. Entfernt — die Zeile nutzt jetzt den normalen
+  `space-y-6`-Abstand der übrigen Ergebnis-Sektion.
+
 ## [1.25.5] – 2026-08-15
 
 ### Behoben
