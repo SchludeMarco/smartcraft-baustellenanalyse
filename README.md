@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.25.6)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.26.0)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -175,10 +175,16 @@ Proxy — der API-Key bleibt dadurch server-seitig und wird nie im Browser sicht
 Der Proxy ist zusätzlich per Origin-Check, Firebase App Check (reCAPTCHA v3),
 IP-basiertem Rate-Limiting und einem dauerhaften Demo-Kontingent (30 KI-Anfragen
 pro IP, siehe `DEMO_LIFETIME_MAX` in `api/gemini.js`) gegen automatisierten
-Missbrauch abgesichert (Details unten unter "Entstehung & technische Hürden"). Technische
-Fehler (React-Crashes, Firebase-/Gemini-API-Fehler) werden lokal gepuffert, sobald
-online automatisch nach Firestore gemeldet und zusätzlich per Mail zugestellt; ein
-PIN-geschützter Admin-Bereich (`src/AdminPanel.jsx`) fasst sie projektweit zusammen.
+Missbrauch abgesichert (Details unten unter "Entstehung & technische Hürden"). Ein
+per Firebase Custom Claim (`admin: true`, vergeben über
+`scripts/set-admin-claim.mjs`, siehe unten) ausgezeichnetes Konto umgeht dieses
+Demo-Kontingent vollständig — der Claim wird serverseitig aus dem Firebase-ID-Token
+gelesen (`api/gemini.js`), nirgends im Code hinterlegt. Technische Fehler
+(React-Crashes, Firebase-/Gemini-API-Fehler) werden lokal gepuffert, sobald online
+automatisch nach Firestore gemeldet und zusätzlich per Mail zugestellt; derselbe
+Custom Claim schaltet auch den Admin-Bereich (`src/AdminPanel.jsx`) frei, der sie
+projektweit zusammenfasst — Zugriff wird durch `firestore.rules` durchgesetzt, nicht
+nur durch die App-UI.
 
 ## Lokales Setup
 
@@ -228,10 +234,9 @@ Environment Variables in den Vercel-Projekteinstellungen:
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | client | „ |
 | `VITE_FIREBASE_APP_ID` | client | „ |
 | `VITE_FIREBASE_MEASUREMENT_ID` | client | „ |
-| `FIREBASE_SERVICE_ACCOUNT_KEY` | server-only (optional, aktiviert App Check + Rate-Limiting, sonst fail-open) | Firebase Console → Projekteinstellungen → Dienstkonten |
+| `FIREBASE_SERVICE_ACCOUNT_KEY` | server-only (optional, aktiviert App Check + Rate-Limiting, sonst fail-open; treibt auch `scripts/set-admin-claim.mjs`) | Firebase Console → Projekteinstellungen → Dienstkonten |
 | `VITE_RECAPTCHA_SITE_KEY` | client (optional, aktiviert App Check clientseitig) | Firebase Console → App Check → Web-App registrieren |
-| `VITE_ADMIN_PIN` | client (reiner UI-Sichtschutz für `AdminPanel.jsx`, kein echter Zugriffsschutz) | frei wählbar |
-| `VITE_ADMIN_EMAIL` | client | eigene Admin-Adresse |
+| `VITE_ADMIN_EMAIL` | client (nur für den Mailto-Link im Admin-Bereich, kein Zugriffsschutz) | eigene Admin-Adresse |
 | `RESEND_API_KEY` | server-only | resend.com/api-keys |
 | `SUPPORT_EMAIL` | server-only (fällt auf `VITE_ADMIN_EMAIL` zurück) | eigene Support-Adresse |
 | `RESEND_FROM_EMAIL` | server-only (optional) | eigene verifizierte Domain, siehe resend.com/domains |

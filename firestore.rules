@@ -6,20 +6,21 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Admin-Bereich (App-interner PIN-Schutz, siehe AdminPanel.jsx): erlaubt jedem
-    // authentifizierten Nutzer (auch anonym) den Lesezugriff auf ALLE Fehlerreports
-    // per Collection-Group-Query. Kein echter Sicherheitsmechanismus — wer die
-    // Firestore SDK direkt anspricht, kommt auch ohne PIN an die Reports. Schreiben
-    // bleibt weiterhin ausschließlich dem jeweiligen Besitzer vorbehalten (Regel oben).
+    // Admin-Bereich (siehe AdminPanel.jsx): Lesezugriff auf ALLE Fehlerreports per
+    // Collection-Group-Query, beschränkt auf Konten mit Custom Claim "admin: true"
+    // (gesetzt via scripts/set-admin-claim.mjs, nie im Code hinterlegt). Echter
+    // Zugriffsschutz — auch direkte Firestore-SDK-Zugriffe ohne die App-UI greifen
+    // ins Leere. Schreiben bleibt weiterhin ausschließlich dem jeweiligen Besitzer
+    // vorbehalten (Regel oben).
     match /{path=**}/errorReports/{reportId} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && request.auth.token.admin == true;
     }
 
     // Admin-Bereich: merkt sich pro Fehlerkontext (siehe errorContextInfo.js), ob er
-    // als "gelöst" markiert wurde (AdminPanel.jsx-Badge/Filter). Gleicher Sichtschutz
-    // wie oben bei errorReports — kein echter Zugriffsschutz, nur PIN-gated UI.
+    // als "gelöst" markiert wurde (AdminPanel.jsx-Badge/Filter). Gleicher Custom-
+    // Claim-Schutz wie oben bei errorReports.
     match /artifacts/{appId}/adminMeta/{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if request.auth != null && request.auth.token.admin == true;
     }
   }
 }

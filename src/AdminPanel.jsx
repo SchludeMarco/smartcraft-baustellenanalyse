@@ -1,14 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Lock, Bug, Mail, X, Loader2, ChevronDown, ChevronUp, RefreshCw, CheckCircle2, RotateCcw } from 'lucide-react';
 import { fetchAllErrorReports, fetchResolvedContexts, setContextResolved, getErrorContextInfo } from './errorReporting';
 
-const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN;
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
-if (!ADMIN_PIN) {
-  // Kein Blocker, aber ohne PIN lässt sich der Admin-Bereich nie entsperren.
-  console.warn('VITE_ADMIN_PIN ist nicht gesetzt – Admin-Bereich bleibt gesperrt.');
-}
 if (!ADMIN_EMAIL) {
   // Kein Blocker, aber ohne Adresse bleibt der Mailto-Link im Bug-Report leer.
   console.warn('VITE_ADMIN_EMAIL ist nicht gesetzt – Mailto-Link im Admin-Bereich fehlt.');
@@ -44,13 +39,11 @@ const buildMailto = (report) => {
   return `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 };
 
-// Admin-Bereich: PIN-geschützte Übersicht aller Fehlerreports (Collection-Group-Query
-// über alle Nutzer, siehe fetchAllErrorReports). Der PIN ist reiner UI-Sichtschutz,
-// keine echte Zugriffskontrolle (siehe Kommentar in firestore.rules).
-const AdminPanel = ({ db, appId, onClose }) => {
-  const [pinInput, setPinInput] = useState('');
-  const [pinError, setPinError] = useState(false);
-  const [unlocked, setUnlocked] = useState(false);
+// Admin-Bereich: Übersicht aller Fehlerreports (Collection-Group-Query über alle
+// Nutzer, siehe fetchAllErrorReports). Zugriff hängt am Firebase Custom Claim
+// "admin: true" (isAdmin-Prop, gesetzt via scripts/set-admin-claim.mjs) — das ist
+// ein echter Zugriffsschutz, durchgesetzt in firestore.rules, nicht nur UI-Gating.
+const AdminPanel = ({ db, appId, isAdmin, onClose }) => {
   const [reports, setReports] = useState([]);
   const [resolvedContexts, setResolvedContexts] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -96,16 +89,13 @@ const AdminPanel = ({ db, appId, onClose }) => {
     }
   };
 
-  const handleUnlock = (e) => {
-    e.preventDefault();
-    if (ADMIN_PIN && pinInput === ADMIN_PIN) {
-      setUnlocked(true);
-      setPinError(false);
-      loadReports();
-    } else {
-      setPinError(true);
-    }
-  };
+  // Panel kann jederzeit geöffnet werden (siehe App.jsx "Admin-Bereich"-Button) —
+  // erst hier greift die echte Prüfung. isAdmin kommt aus dem ID-Token-Claim und
+  // kann sich ändern (z.B. nach frischer Anmeldung), daher als Effekt statt nur
+  // beim ersten Mount.
+  useEffect(() => {
+    if (isAdmin) loadReports();
+  }, [isAdmin, loadReports]);
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4" onClick={onClose}>
@@ -123,23 +113,11 @@ const AdminPanel = ({ db, appId, onClose }) => {
           </button>
         </div>
 
-        {!unlocked ? (
-          <form onSubmit={handleUnlock} className="flex flex-col items-center justify-center flex-grow text-center">
+        {!isAdmin ? (
+          <div className="flex flex-col items-center justify-center flex-grow text-center">
             <Lock className="w-8 h-8 text-gray-400 mb-3" />
-            <p className="text-sm text-gray-600 mb-4">Bitte Admin-PIN eingeben.</p>
-            <input
-              type="password"
-              inputMode="numeric"
-              value={pinInput}
-              onChange={(e) => { setPinInput(e.target.value); setPinError(false); }}
-              autoFocus
-              className={`w-40 text-center p-2 border rounded-lg mb-2 focus:ring-red-500 focus:border-red-500 ${pinError ? 'border-red-500' : 'border-gray-300'}`}
-            />
-            {pinError && <p className="text-xs text-red-600 mb-2">Falscher PIN.</p>}
-            <button type="submit" className="mt-2 px-4 py-2 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition text-sm">
-              Entsperren
-            </button>
-          </form>
+            <p className="text-sm text-gray-600">Kein Admin-Zugriff für dieses Konto.</p>
+          </div>
         ) : (
           <>
             <div className="flex justify-between items-center mb-1 flex-shrink-0">

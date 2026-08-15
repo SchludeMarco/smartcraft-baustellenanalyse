@@ -8,7 +8,7 @@ Volume2, VolumeX, List, X, Lock, Info
 import { initializeApp } from 'firebase/app';
 import {
 getAuth, signInAnonymously, onAuthStateChanged, signOut,
-GoogleAuthProvider, signInWithPopup, linkWithPopup, getIdToken
+GoogleAuthProvider, signInWithPopup, linkWithPopup, getIdToken, getIdTokenResult
 } from 'firebase/auth';
 import {
 initializeAppCheck, ReCaptchaV3Provider, getToken as getAppCheckToken
@@ -37,6 +37,12 @@ const apiTtsUrl = '/api/tts';
 // Modul-Variable statt React-State, weil fetchWithRetry außerhalb der
 // Komponente liegt und synchron auf die App-Check-Instanz zugreifen muss.
 let appCheckInstance = null;
+// Gleicher Grund wie appCheckInstance: hält die Auth-Instanz für fetchWithRetry
+// bereit, damit /api/gemini das ID-Token des eingeloggten Nutzers mitschicken
+// kann (Voraussetzung für den serverseitigen Admin-Custom-Claim-Check, siehe
+// api/gemini.js isAdminRequest). Für normale Nutzer ändert das mitgeschickte
+// Token nichts — der Server prüft nur, ob der Claim "admin: true" gesetzt ist.
+let currentAuthInstance = null;
 // NEUE SYSTEM INSTRUCTION: Betont die Problembeschreibung stärker
 const SYSTEM_INSTRUCTION = "Du bist ein erfahrener Bauingenieur und Zimmermann, spezialisiert auf die Fehlerbehebung und Lösungsfindung bei Bauproblemen. Analysiere das bereitgestellte Bild basierend auf dem GLEICHZEITIG GELIEFERTEN GEWERK und der Problembeschreibung. Ist eine Problembeschreibung vorhanden, MUSS sich die Analyse VORRANGIG auf diese Beschreibung konzentrieren. Gib eine präzise Diagnose sowie eine klare, schrittweise Lösung für einen erfahrenen Handwerker. Antworte immer auf Deutsch. Halte die Sprache professionell, aber direkt und praxisnah.";
 const SYSTEM_INSTRUCTION_MATERIAL = "Du bist ein Einkaufsmanager für Handwerksbetriebe. Analysiere den folgenden Lösungsvorschlag und erstelle eine JSON-Liste der benötigten Materialien und Werkzeuge. Gib nur das JSON-Array aus.";
@@ -168,6 +174,16 @@ console.error('App-Check-Token konnte nicht geholt werden:', e);
 // catch-Block der aufrufenden API-Funktion, der wegen des fehlenden
 // Tokens ohnehin gleich danach greift).
 queueErrorReport('app-check-token', e);
+}
+}
+if (url === apiUrl && currentAuthInstance?.currentUser) {
+try {
+const idToken = await getIdToken(currentAuthInstance.currentUser);
+requestOptions = { ...requestOptions, headers: { ...requestOptions.headers, Authorization: `Bearer ${idToken}` } };
+} catch {
+// ID-Token ist optional: ohne Admin-Claim ändert ein fehlendes Token
+// nichts am normalen Demo-Kontingent-Verhalten, also darf es die
+// Anfrage nicht blockieren.
 }
 }
 for (let i = 0; i < maxRetries; i++) {
@@ -375,6 +391,10 @@ const [pendingResumeUser, setPendingResumeUser] = useState(null);
 const [isStartingFreshSession, setIsStartingFreshSession] = useState(false);
 const [showHistory, setShowHistory] = useState(false); // Steuert das Historien-Modal
 const [showAdmin, setShowAdmin] = useState(false); // Steuert das Admin-Modal (Fehlerreports)
+// Echter Admin-Status (Firebase Custom Claim "admin: true", siehe
+// scripts/set-admin-claim.mjs + api/gemini.js), kein UI-Sichtschutz mehr —
+// AdminPanel.jsx verlässt sich hierauf statt auf einen PIN.
+const [isAdmin, setIsAdmin] = useState(false);
 const [showDisclaimer, setShowDisclaimer] = useState(true); // EU-AI-Act-Haftungsausschluss wegklickbar (pro Sitzung)
 const [showDemoNotice, setShowDemoNotice] = useState(true); // Hinweis auf Demo-Kontingent wegklickbar (pro Sitzung)
 // Live-Stand des Demo-Kontingents (siehe api/gemini.js DEMO_LIFETIME_MAX) —
@@ -659,6 +679,7 @@ setIsAuthReady(true);
 return;
 }
 setAuth(authInstance);
+currentAuthInstance = authInstance;
 setDb(dbInstance);
 // Zeigt den Live-Stand des Demo-Kontingents (api/demo-status.js) schon vor
 // der ersten Analyse an. Rein informativ: Netzwerk-/Server-Fehler bleiben
@@ -692,9 +713,15 @@ setUserId(user.uid);
 setAuthUser(toAuthUserSnapshot(user));
 setShowAuth(false);
 setPendingResumeUser(null);
+// Custom Claims stecken im ID-Token, nicht im User-Objekt selbst — erst
+// getIdTokenResult() legt sie offen. Rein informativ für die UI (den
+// eigentlichen Zugriffsschutz für Daten setzt firestore.rules durch),
+// daher bleibt ein Fehler hier stumm und isAdmin einfach false.
+getIdTokenResult(user).then((r) => setIsAdmin(r.claims?.admin === true)).catch(() => setIsAdmin(false));
 } else {
 setUserId(null);
 setAuthUser(null);
+setIsAdmin(false);
 setShowAuth(false);
 if (wasFirstResolution) {
 try {
@@ -1939,6 +1966,7 @@ onSelect={handleSelectAnalysis}
 <AdminPanel
 db={db}
 appId={appId}
+isAdmin={isAdmin}
 onClose={() => setShowAdmin(false)}
 />
 )}

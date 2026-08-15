@@ -1,6 +1,7 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAppCheck } from 'firebase-admin/app-check';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 import { DEMO_LIFETIME_MAX } from '../shared/demoLimit.js';
 
 // Ohne diese Angabe gilt Vercels Default-Timeout von 10s für Serverless
@@ -57,6 +58,23 @@ async function verifyAppCheck(req, app) {
   try {
     await getAppCheck(app).verifyToken(token);
     return true;
+  } catch {
+    return false;
+  }
+}
+
+// Erkennt einen echten Admin-Account über das Firebase-ID-Token (Authorization:
+// Bearer <token>) + Custom Claim "admin: true" (gesetzt per
+// scripts/set-admin-claim.mjs, nie im Code/Repo hinterlegt). Fehlt das Token,
+// ist es ungültig oder fehlt der Claim, gilt der Request als normaler
+// Demo-Nutzer — kein Fallback, kein Klartext-Secret.
+async function isAdminRequest(req, app) {
+  const authHeader = req.headers.authorization || '';
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!idToken) return false;
+  try {
+    const decoded = await getAuth(app).verifyIdToken(idToken);
+    return decoded.admin === true;
   } catch {
     return false;
   }
@@ -133,24 +151,33 @@ export default async function handler(req, res) {
         res.status(401).json({ error: 'Forbidden: invalid App Check token' });
         return;
       }
-      const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
-      const { allowed, demoExceeded, remaining } = await checkRateLimit(app, ip);
-      // Geht als X-Demo-Remaining-Header auf jede Antwort dieses Handlers raus
-      // (Erfolg wie Fehler), damit die App live anzeigen kann, wie viele
-      // Anfragen noch übrig sind.
-      res.setHeader('X-Demo-Remaining', String(remaining));
-      if (!allowed) {
-        if (demoExceeded) {
-          // 403 statt 429: fetchWithRetry im Client behandelt 429 als
-          // vorübergehend und wiederholt automatisch — das Demo-Kontingent ist
-          // aber endgültig aufgebraucht, ein Retry würde nur unnötig warten.
-          res.status(403).json({
-            error: `Demo-Kontingent erreicht: Diese öffentliche Vorschau ist auf ${DEMO_LIFETIME_MAX} KI-Anfragen pro Besucher begrenzt. Danke fürs Ausprobieren!`,
-          });
-        } else {
-          res.status(429).json({ error: 'Too many requests' });
+      const isAdmin = await isAdminRequest(req, app);
+      if (isAdmin) {
+        // Echtes Admin-Konto (Custom Claim, siehe isAdminRequest): weder
+        // IP-Rate-Limit noch Demo-Lifetime-Kontingent gelten hier — bewusst
+        // vor checkRateLimit(), damit der eigene Account auch dessen
+        // Fenster-Zähler nicht mitverbraucht.
+        res.setHeader('X-Demo-Remaining', 'unlimited');
+      } else {
+        const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
+        const { allowed, demoExceeded, remaining } = await checkRateLimit(app, ip);
+        // Geht als X-Demo-Remaining-Header auf jede Antwort dieses Handlers raus
+        // (Erfolg wie Fehler), damit die App live anzeigen kann, wie viele
+        // Anfragen noch übrig sind.
+        res.setHeader('X-Demo-Remaining', String(remaining));
+        if (!allowed) {
+          if (demoExceeded) {
+            // 403 statt 429: fetchWithRetry im Client behandelt 429 als
+            // vorübergehend und wiederholt automatisch — das Demo-Kontingent ist
+            // aber endgültig aufgebraucht, ein Retry würde nur unnötig warten.
+            res.status(403).json({
+              error: `Demo-Kontingent erreicht: Diese öffentliche Vorschau ist auf ${DEMO_LIFETIME_MAX} KI-Anfragen pro Besucher begrenzt. Danke fürs Ausprobieren!`,
+            });
+          } else {
+            res.status(429).json({ error: 'Too many requests' });
+          }
+          return;
         }
-        return;
       }
     } else {
       console.warn('FIREBASE_SERVICE_ACCOUNT_KEY nicht gesetzt — App Check/Rate-Limiting deaktiviert.');

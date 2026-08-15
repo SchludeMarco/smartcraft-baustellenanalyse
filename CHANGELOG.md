@@ -8,6 +8,26 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.26.0] – 2026-08-15
+
+### Hinzugefügt
+- **Echter Admin-Zugang statt PIN.** Problem: Der Admin-Bereich
+  (`AdminPanel.jsx`) war bislang nur durch einen `VITE_ADMIN_PIN` im
+  Client-Bundle geschützt — reiner UI-Sichtschutz, kein echter
+  Zugriffsschutz (siehe Kommentar in der alten `firestore.rules`), und ein
+  eigenes Konto konnte das Demo-Kontingent in `api/gemini.js` nicht umgehen.
+  Lösung: Ein Firebase Custom Claim (`admin: true`) wird per neuem,
+  einmalig lokal auszuführendem Skript (`scripts/set-admin-claim.mjs`) auf
+  ein bestehendes Konto vergeben — landet nirgends im Code oder Repo.
+  `api/gemini.js` verifiziert bei jeder Anfrage das mitgeschickte
+  Firebase-ID-Token und liest den Claim serverseitig aus (`isAdminRequest`);
+  bei `admin: true` werden IP-Rate-Limit und Demo-Lifetime-Kontingent
+  komplett übersprungen. `AdminPanel.jsx` prüft denselben Claim (über
+  `getIdTokenResult`) statt eines PIN-Formulars, und `firestore.rules`
+  setzt den Claim auch für `errorReports`/`adminMeta` durch — Zugriff ist
+  jetzt serverseitig erzwungen, nicht nur UI-gated. `VITE_ADMIN_PIN`
+  entfällt ersatzlos.
+
 ## [1.25.6] – 2026-08-15
 
 ### Behoben
