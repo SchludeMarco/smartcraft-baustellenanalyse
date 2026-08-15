@@ -1385,12 +1385,15 @@ Lösung und Diagnose
 {/* Erneuter Hinweis aufs Demo-Kontingent direkt nach jeder Analyse (nicht
     nur im wegklickbaren Banner oben), damit der aktuelle Stand nicht
     übersehen wird — demoRemaining kommt aus dem X-Demo-Remaining-Header
-    (siehe updateDemoRemainingFromResponse). */}
-{demoRemaining !== null && (
+    (siehe updateDemoRemainingFromResponse). Fehlt der Live-Wert (z.B. weil
+    FIREBASE_SERVICE_ACCOUNT_KEY serverseitig nicht gesetzt ist und das
+    Tracking damit inaktiv bleibt), zeigt die Zeile ersatzweise nur die
+    statische Obergrenze, statt ganz zu verschwinden. */}
 <p className="text-xs text-gray-500 -mt-4">
-Noch {demoRemaining} von {DEMO_LIFETIME_MAX} kostenlosen KI-Anfragen für dieses Gerät übrig.
+{demoRemaining !== null
+? `Noch ${demoRemaining} von ${DEMO_LIFETIME_MAX} kostenlosen KI-Anfragen für dieses Gerät übrig.`
+: `Diese Demo ist auf ${DEMO_LIFETIME_MAX} KI-Anfragen pro Gerät begrenzt.`}
 </p>
-)}
 {/* 1. Hauptlösung */}
 <div className="prose max-w-none text-gray-700 leading-relaxed max-h-96 overflow-y-auto p-3 border border-gray-200 rounded-lg bg-gray-50">
 {/* Anzeige des Lösungstextes */}

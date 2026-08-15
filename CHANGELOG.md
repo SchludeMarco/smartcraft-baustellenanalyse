@@ -8,6 +8,25 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.25.2] – 2026-08-15
+
+### Behoben
+- **Rest-Kontingent-Hinweis im Analyseergebnis blieb komplett leer.** Ursache:
+  Die Zeile aus V1.25.1 wurde nur gerendert, wenn `demoRemaining` bekannt war
+  — ohne Fallback für den Fall `null`. In Produktion ist `demoRemaining`
+  aber immer `null`, weil `FIREBASE_SERVICE_ACCOUNT_KEY` in den
+  Vercel-Projekteinstellungen nicht gesetzt ist (per `vercel env ls`
+  bestätigt) und `api/gemini.js`/`api/demo-status.js` das Tracking dadurch
+  komplett übersprungen (Fail-open-Verhalten). Lösung: Die Zeile zeigt jetzt
+  bei fehlendem Live-Wert ersatzweise die statische Obergrenze statt gar
+  nichts. **Wichtiger, eigentlicher Befund:** Ohne `FIREBASE_SERVICE_ACCOUNT_KEY`
+  (und `VITE_RECAPTCHA_SITE_KEY`, ebenfalls nicht gesetzt) ist das
+  Demo-Kontingent aus `DEMO_LIFETIME_MAX` in Produktion aktuell gar nicht
+  durchgesetzt — nur der Origin-Check schützt `/api/gemini` derzeit. Für
+  echten Kostenschutz beim öffentlichen Teilen des Links müssen beide
+  Variablen noch in den Vercel-Projekteinstellungen ergänzt werden (siehe
+  README, Abschnitt "Deployment (Vercel)").
+
 ## [1.25.1] – 2026-08-15
 
 ### Hinzugefügt

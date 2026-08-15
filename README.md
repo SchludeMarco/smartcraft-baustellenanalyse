@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.25.1)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.25.2)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -238,6 +238,19 @@ Environment Variables in den Vercel-Projekteinstellungen:
 
 ## Bekannte Einschränkungen & Ausblick
 
+- **App Check + Rate-Limiting/Demo-Kontingent für `/api/gemini` sind
+  optional und aktuell im deployten Projekt nicht aktiv**, weil weder
+  `FIREBASE_SERVICE_ACCOUNT_KEY` noch `VITE_RECAPTCHA_SITE_KEY` in den
+  Vercel-Projekteinstellungen gesetzt sind (Stand: siehe `vercel env ls`).
+  `api/gemini.js` läuft dadurch im dokumentierten Fail-open-Modus: Origin-Check
+  bleibt aktiv, aber weder App Check noch das 30-Anfragen-Demo-Kontingent aus
+  `DEMO_LIFETIME_MAX` (`shared/demoLimit.js`) werden durchgesetzt — der
+  Live-Zähler im UI zeigt entsprechend nur die statische Obergrenze statt
+  eines echten Rest-Stands. Für echten Kostenschutz beim Teilen des
+  öffentlichen Links: `FIREBASE_SERVICE_ACCOUNT_KEY` (Firebase Console →
+  Projekteinstellungen → Dienstkonten → neuen privaten Schlüssel generieren)
+  und `VITE_RECAPTCHA_SITE_KEY` (Firebase Console → App Check → Web-App
+  registrieren → reCAPTCHA v3) einmalig ergänzen, siehe Env-Var-Tabelle oben.
 - **TTS (Sprachausgabe)** liest die KI-Diagnose auf Wunsch vor — praktisch auf der
   Baustelle, wenn beide Hände beschäftigt sind. Läuft serverseitig über einen
   eigenen Proxy (`api/tts.js`, gleiches Muster wie `api/gemini.js`) zur Google
