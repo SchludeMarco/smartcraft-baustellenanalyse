@@ -8,6 +8,28 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.25.4] – 2026-08-15
+
+### Behoben
+- **`/api/gemini` schlug nach Aktivierung von App Check regelmäßig mit
+  plattformseitigem 503 fehl.** Ursache: Vercels Default-Timeout für
+  Serverless Functions liegt bei 10s. Solange App Check/Rate-Limiting
+  fail-open (mangels korrekt konfiguriertem `FIREBASE_SERVICE_ACCOUNT_KEY`/
+  `VITE_RECAPTCHA_SITE_KEY`) inaktiv liefen, reichte das knapp. Mit aktiver
+  App-Check-Verifikation (Netzwerk-Roundtrip zu Firebase) und der
+  Firestore-Transaktion fürs Rate-Limiting VOR dem eigentlichen, oft mehrere
+  Sekunden dauernden Gemini-Vision-Aufruf wurde das Limit regelmäßig
+  gerissen — sichtbar als 503 ohne jede eigene Fehlermeldung im Vercel-Log
+  (`vercel logs --json` zeigte den Status, aber ein leeres `logs`-Array).
+  Lösung: `export const config = { maxDuration: 30 }` in `api/gemini.js`.
+- **`/api/demo-status` lieferte durchgehend 403 statt eines Rest-Stands.**
+  Ursache: Der Origin-Check (identisches Muster wie `api/gemini.js`) verlangte
+  einen `Origin`-Header — den schicken Browser bei einfachen `GET`-Requests
+  ohne Custom-Header aber nicht zuverlässig mit (anders als bei den
+  `POST`-Requests an `/api/gemini`, die immer einen Origin-Header mitbringen).
+  Lösung: Fällt jetzt zusätzlich auf den `Referer`-Header zurück, bevor eine
+  Anfrage als fremd abgelehnt wird.
+
 ## [1.25.3] – 2026-08-15
 
 ### Behoben

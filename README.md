@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.25.3)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.25.4)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -238,19 +238,21 @@ Environment Variables in den Vercel-Projekteinstellungen:
 
 ## Bekannte Einschränkungen & Ausblick
 
-- **App Check + Rate-Limiting/Demo-Kontingent für `/api/gemini` sind
-  optional und aktuell im deployten Projekt nicht aktiv**, weil weder
-  `FIREBASE_SERVICE_ACCOUNT_KEY` noch `VITE_RECAPTCHA_SITE_KEY` in den
-  Vercel-Projekteinstellungen gesetzt sind (Stand: siehe `vercel env ls`).
-  `api/gemini.js` läuft dadurch im dokumentierten Fail-open-Modus: Origin-Check
-  bleibt aktiv, aber weder App Check noch das 30-Anfragen-Demo-Kontingent aus
-  `DEMO_LIFETIME_MAX` (`shared/demoLimit.js`) werden durchgesetzt — der
-  Live-Zähler im UI zeigt entsprechend nur die statische Obergrenze statt
-  eines echten Rest-Stands. Für echten Kostenschutz beim Teilen des
-  öffentlichen Links: `FIREBASE_SERVICE_ACCOUNT_KEY` (Firebase Console →
-  Projekteinstellungen → Dienstkonten → neuen privaten Schlüssel generieren)
-  und `VITE_RECAPTCHA_SITE_KEY` (Firebase Console → App Check → Web-App
-  registrieren → reCAPTCHA v3) einmalig ergänzen, siehe Env-Var-Tabelle oben.
+- **App Check + Rate-Limiting/Demo-Kontingent für `/api/gemini` sind optional**
+  (ohne `FIREBASE_SERVICE_ACCOUNT_KEY`/`VITE_RECAPTCHA_SITE_KEY` läuft
+  `api/gemini.js` im dokumentierten Fail-open-Modus: Origin-Check bleibt
+  aktiv, aber weder App Check noch das 30-Anfragen-Demo-Kontingent aus
+  `DEMO_LIFETIME_MAX` werden durchgesetzt). Beim erstmaligen Einrichten in
+  der Firebase Console zwei leicht zu verwechselnde Fallstricke: (1) Im
+  App-Check-Registrierungsdialog der Web-App wird ein **reCAPTCHA-v3-Secret-
+  Schlüssel** verlangt (aus der reCAPTCHA-Admin-Konsole, google.com/recaptcha/admin,
+  bei der jeweiligen Site) — nicht der Site Key, der als
+  `VITE_RECAPTCHA_SITE_KEY` ins Frontend geht. Ein vertauschter Key äußert
+  sich als `FirebaseError: AppCheck: … (appCheck/throttled)` nach
+  vorangegangenem 400. (2) Mit aktivem App Check + Firestore-Rate-Limit-
+  Transaktion reicht Vercels Default-Timeout von 10s für den Gemini-
+  Vision-Aufruf oft nicht mehr — deshalb `export const config = { maxDuration: 30 }`
+  in `api/gemini.js`.
 - **`RESEND_API_KEY` ist im deployten Projekt ebenfalls nicht gesetzt** —
   die in `api/report-bug.js`/`errorReporting.js` beschriebene automatische
   Mail-Benachrichtigung bei Fehlerreports läuft dadurch aktuell ins Leere.

@@ -48,12 +48,24 @@ export default async function handler(req, res) {
 
   // Nur Requests vom eigenen Frontend akzeptieren, gleiches Muster wie
   // api/gemini.js — verhindert, dass fremde Seiten hier IP-Stände abfragen.
+  // Unterschied zu api/gemini.js: einfache GET-Requests ohne Body/Custom-
+  // Header schicken je nach Browser keinen Origin-Header (anders als die
+  // POST-Requests an /api/gemini, die zuverlässig einen Origin-Header
+  // mitschicken) — deshalb zusätzlich Referer als Fallback prüfen, bevor
+  // legitime Anfragen fälschlich mit 403 abgewiesen werden.
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   let originHost = null;
   try {
     originHost = req.headers.origin ? new URL(req.headers.origin).host : null;
   } catch {
     originHost = null;
+  }
+  if (!originHost) {
+    try {
+      originHost = req.headers.referer ? new URL(req.headers.referer).host : null;
+    } catch {
+      originHost = null;
+    }
   }
   if (!originHost || originHost !== host) {
     res.status(403).json({ error: 'Forbidden' });

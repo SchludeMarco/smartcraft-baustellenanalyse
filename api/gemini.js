@@ -3,6 +3,14 @@ import { getAppCheck } from 'firebase-admin/app-check';
 import { getFirestore } from 'firebase-admin/firestore';
 import { DEMO_LIFETIME_MAX } from '../shared/demoLimit.js';
 
+// Ohne diese Angabe gilt Vercels Default-Timeout von 10s für Serverless
+// Functions. Das reichte knapp, solange App Check/Rate-Limiting fail-open
+// (inaktiv) liefen — mit aktivem App Check (Firebase-Verifikation) + Firestore-
+// Transaktion für den Rate-Limit-Zähler VOR dem eigentlichen (oft mehrere
+// Sekunden dauernden) Gemini-Vision-Aufruf reißt das 10s-Limit regelmäßig
+// (sichtbar als plattformseitiges 503 ohne eigene Fehlermeldung im Log).
+export const config = { maxDuration: 30 };
+
 // "latest"-Alias statt fest datiertem Modellnamen, damit die App nicht erneut
 // durch eine Modell-Abschaltung bricht (siehe Git-Historie: gemini-2.5-flash-preview-09-2025
 // und gemini-2.5-flash wurden beide bereits zurückgezogen).
