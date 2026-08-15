@@ -8,6 +8,23 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.25.0] – 2026-08-15
+
+### Hinzugefügt
+- **Live-Zähler fürs Demo-Kontingent statt statischer Zahl.** Problem: Der
+  Banner aus V1.24.4 zeigte nur die feste Obergrenze (30) — wie viele
+  KI-Anfragen ein Besucher tatsächlich noch übrig hat, blieb unklar, bis eine
+  Analyse mit 403 fehlschlug. Lösung: Ein neuer, rein lesender Endpoint
+  (`api/demo-status.js`) liest beim App-Start den aktuellen Stand aus
+  `_rateLimits/{ip}.lifetimeCount`, ohne ihn zu erhöhen. `api/gemini.js`
+  schickt zusätzlich nach jeder Anfrage (Erfolg wie Fehler) den aktuellen
+  Rest-Stand als `X-Demo-Remaining`-Header mit. Der Banner zeigt jetzt "Noch
+  X von 30 kostenlosen KI-Anfragen übrig" und aktualisiert sich nach jeder
+  Analyse/jedem Zusatz-Tool. `DEMO_LIFETIME_MAX` wurde dafür nach
+  `shared/demoLimit.js` ausgelagert (Single Source of Truth für
+  `api/gemini.js`, `api/demo-status.js` und den Client-Banner), damit die
+  angezeigte Obergrenze nie von der serverseitig durchgesetzten abweicht.
+
 ## [1.24.4] – 2026-08-15
 
 ### Hinzugefügt

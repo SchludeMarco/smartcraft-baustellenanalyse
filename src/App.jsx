@@ -20,11 +20,16 @@ orderBy, limit, serverTimestamp
 import { firebaseConfig } from './firebaseConfig';
 import { queueErrorReport, flushErrorReports, setErrorReportingAppCheck } from './errorReporting';
 import AdminPanel from './AdminPanel';
+import { DEMO_LIFETIME_MAX } from '../shared/demoLimit.js';
 
 const appId = 'smartcraft-baustellenanalyse';
 // Gemini-Aufrufe laufen über eine eigene Serverless-Function (api/gemini.js),
 // damit der API-Key nie im Browser sichtbar ist.
 const apiUrl = '/api/gemini';
+// Rein lesender Zwilling (api/demo-status.js): liefert den aktuellen Stand
+// des Demo-Kontingents, ohne es zu verbrauchen — für die Anzeige beim
+// App-Start, bevor die erste echte Anfrage läuft.
+const demoStatusUrl = '/api/demo-status';
 // Sprachausgabe (TTS) läuft über einen eigenen Serverless-Proxy (api/tts.js)
 // zur Google Cloud Text-to-Speech API — gleicher Grund wie bei apiUrl: der
 // API-Key darf nie im Browser sichtbar sein.
@@ -149,7 +154,7 @@ setTimeout(() => ctx.close(), 700);
 */
 const fetchWithRetry = async (url, options, maxRetries = 3) => {
 let requestOptions = options;
-if (url === apiUrl && appCheckInstance) {
+if ((url === apiUrl || url === demoStatusUrl) && appCheckInstance) {
 try {
 const { token } = await getAppCheckToken(appCheckInstance);
 requestOptions = { ...options, headers: { ...options.headers, 'X-Firebase-AppCheck': token } };
@@ -364,6 +369,10 @@ const [showHistory, setShowHistory] = useState(false); // Steuert das Historien-
 const [showAdmin, setShowAdmin] = useState(false); // Steuert das Admin-Modal (Fehlerreports)
 const [showDisclaimer, setShowDisclaimer] = useState(true); // EU-AI-Act-Haftungsausschluss wegklickbar (pro Sitzung)
 const [showDemoNotice, setShowDemoNotice] = useState(true); // Hinweis auf Demo-Kontingent wegklickbar (pro Sitzung)
+// Live-Stand des Demo-Kontingents (siehe api/gemini.js DEMO_LIFETIME_MAX) —
+// null solange unbekannt (noch nicht geladen bzw. Tracking serverseitig aus),
+// dann Zahl der noch übrigen KI-Anfragen für dieses Gerät.
+const [demoRemaining, setDemoRemaining] = useState(null);
 // --- App States ---
 const [selectedImageBase64, setSelectedImageBase64] = useState(null);
 const [problemDescription, setProblemDescription] = useState('');
@@ -546,6 +555,7 @@ method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(payload)
 });
+updateDemoRemainingFromResponse(response);
 const responseText = await response.text();
 if (!response.ok || !responseText) {
 // Server-Fehler (z.B. Rate-Limit) kommen als {"error": "..."} —
@@ -589,6 +599,15 @@ callGeminiTtsSummaryAPI();
 speakText(solutionText);
 }
 }, [isTtsPlaying, solutionText, isGeneratingTtsShort, isTtsLoading, ttsMode, ttsShortText, speakText, callGeminiTtsSummaryAPI]);
+// Liest den X-Demo-Remaining-Header aus einer /api/gemini-Antwort (siehe
+// api/gemini.js) und hält den Live-Zähler im Banner aktuell. Fehlt der
+// Header (z.B. Tracking serverseitig aus), bleibt der bisherige Stand.
+const updateDemoRemainingFromResponse = (response) => {
+const header = response.headers.get('X-Demo-Remaining');
+if (header === null) return;
+const value = Number(header);
+if (Number.isFinite(value)) setDemoRemaining(value);
+};
 // --- EFFECT: FIREBASE INITIALISIERUNG UND ANONYME ANMELDUNG ---
 useEffect(() => {
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
@@ -633,6 +652,15 @@ return;
 }
 setAuth(authInstance);
 setDb(dbInstance);
+// Zeigt den Live-Stand des Demo-Kontingents (api/demo-status.js) schon vor
+// der ersten Analyse an. Rein informativ: Netzwerk-/Server-Fehler bleiben
+// stumm, das Banner fällt dann auf die statische Obergrenze zurück.
+fetchWithRetry(demoStatusUrl, { method: 'GET' }, 1)
+.then((response) => (response.ok ? response.json() : null))
+.then((data) => {
+if (data && typeof data.remaining === 'number') setDemoRemaining(data.remaining);
+})
+.catch(() => {});
 // Merkt sich, ob die aktuelle onAuthStateChanged-Auflösung die erste seit
 // diesem Seiten-Ladevorgang ist. Nur dann kann eine anonyme Sitzung bereits
 // vor dem Laden im Browser persistiert (und damit potenziell von einer
@@ -885,6 +913,7 @@ method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(payload)
 });
+updateDemoRemainingFromResponse(response);
 // Robuste Verarbeitung der JSON-Antwort
 const responseText = await response.text();
 if (!response.ok || !responseText) {
@@ -949,6 +978,7 @@ method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(payload)
 });
+updateDemoRemainingFromResponse(response);
 const responseText = await response.text();
 if (!response.ok || !responseText) {
 // Server-Fehler (z.B. Demo-Kontingent, Rate-Limit) kommen als {"error": "..."} —
@@ -1007,6 +1037,7 @@ method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(payload)
 });
+updateDemoRemainingFromResponse(response);
 const responseText = await response.text();
 if (!response.ok || !responseText) {
 // Server-Fehler (z.B. Demo-Kontingent, Rate-Limit) kommen als {"error": "..."} —
@@ -1058,6 +1089,7 @@ method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(payload)
 });
+updateDemoRemainingFromResponse(response);
 const responseText = await response.text();
 if (!response.ok || !responseText) {
 // Server-Fehler (z.B. Demo-Kontingent, Rate-Limit) kommen als {"error": "..."} —
@@ -1113,6 +1145,7 @@ const callGeminiVideoSearch = useCallback(async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
+    updateDemoRemainingFromResponse(response);
     const responseText = await response.text();
     if (!response.ok || !responseText) {
       // Server-Fehler (z.B. Demo-Kontingent, Rate-Limit) kommen als {"error": "..."} —
@@ -1906,14 +1939,21 @@ onClose={() => setShowAdmin(false)}
 {/* Haupt-Content-Bereich */}
 <main className="p-4 space-y-6 w-full bg-white/95 backdrop-blur-md shadow-2xl overflow-y-auto">
 {/* DEMO-KONTINGENT-HINWEIS: informiert vorab über das Limit aus DEMO_LIFETIME_MAX
-    in api/gemini.js (aktuell 30 KI-Anfragen/Gerät), statt dass Nutzer erst beim
-    Fehlschlagen der Analyse davon erfahren. Zahl bei Änderung dort synchron halten. */}
+    (shared/demoLimit.js), statt dass Nutzer erst beim Fehlschlagen der Analyse
+    davon erfahren. demoRemaining kommt live vom Server (api/demo-status.js
+    beim Start, X-Demo-Remaining-Header nach jeder Anfrage, siehe
+    updateDemoRemainingFromResponse) — solange es null ist (noch nicht
+    geladen bzw. Tracking serverseitig aus), zeigt der Text nur die Obergrenze. */}
 {showDemoNotice && (
 <div className="p-3 bg-blue-50 border-l-4 border-blue-400 text-blue-800 rounded-lg shadow-md flex items-start space-x-3">
 <Info className="w-5 h-5 mt-1 flex-shrink-0 text-blue-500" />
 <div className="flex-grow">
 <p className="font-bold">Kostenlose Vorschau</p>
-<p className="text-xs">Diese Demo ist auf 30 KI-Analysen pro Gerät begrenzt, damit sie für alle Interessierten nutzbar bleibt.</p>
+<p className="text-xs">
+{demoRemaining !== null
+? `Noch ${demoRemaining} von ${DEMO_LIFETIME_MAX} kostenlosen KI-Anfragen für dieses Gerät übrig.`
+: `Diese Demo ist auf ${DEMO_LIFETIME_MAX} KI-Anfragen pro Gerät begrenzt, damit sie für alle Interessierten nutzbar bleibt.`}
+</p>
 </div>
 <button
 onClick={() => setShowDemoNotice(false)}

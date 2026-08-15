@@ -1,6 +1,7 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAppCheck } from 'firebase-admin/app-check';
 import { getFirestore } from 'firebase-admin/firestore';
+import { DEMO_LIFETIME_MAX } from '../shared/demoLimit.js';
 
 // "latest"-Alias statt fest datiertem Modellnamen, damit die App nicht erneut
 // durch eine Modell-Abschaltung bricht (siehe Git-Historie: gemini-2.5-flash-preview-09-2025
@@ -14,12 +15,12 @@ const RATE_LIMIT_MAX_PER_WINDOW = 12;
 const RATE_LIMIT_DAY_MS = 24 * 60 * 60 * 1000;
 const RATE_LIMIT_MAX_PER_DAY = 200;
 
-// Demo-Kontingent: anders als die beiden Fenster oben läuft dieser Zähler nie
-// zurück — er deckelt, wie oft dieselbe IP diesen Endpoint INSGESAMT nutzen
-// darf. Gedacht für den öffentlichen (z.B. LinkedIn-)Link ohne Login: einzelne
-// Besucher können die App voll ausprobieren, aber niemand betreibt sie
-// dauerhaft kostenlos über den eigenen Account weiter.
-const DEMO_LIFETIME_MAX = 30;
+// DEMO_LIFETIME_MAX (siehe shared/demoLimit.js): anders als die beiden Fenster
+// oben läuft dieser Zähler nie zurück — er deckelt, wie oft dieselbe IP diesen
+// Endpoint INSGESAMT nutzen darf. Gedacht für den öffentlichen (z.B.
+// LinkedIn-)Link ohne Login: einzelne Besucher können die App voll
+// ausprobieren, aber niemand betreibt sie dauerhaft kostenlos über den
+// eigenen Account weiter.
 
 // Lazy-Init: Admin-App nur aufbauen, wenn ein Service-Account hinterlegt ist.
 // Ohne FIREBASE_SERVICE_ACCOUNT_KEY bleiben App Check/Rate-Limiting aus
@@ -58,7 +59,9 @@ async function verifyAppCheck(req, app) {
 // erwähnt und damit für das Client-SDK automatisch unerreichbar (Default-Deny).
 // Liefert neben "allowed" auch "demoExceeded", damit der Handler das
 // Demo-Kontingent (dauerhaft) von normalem Burst-Throttling (temporär)
-// unterscheiden und jeweils passend antworten kann.
+// unterscheiden und jeweils passend antworten kann. "remaining" (Kontingent
+// nach dieser Anfrage) geht als X-Demo-Remaining-Header an den Client, damit
+// die App live anzeigen kann, wie viele Anfragen noch übrig sind.
 async function checkRateLimit(app, ip) {
   const db = getFirestore(app);
   const ref = db.collection('_rateLimits').doc(ip);
@@ -81,7 +84,8 @@ async function checkRateLimit(app, ip) {
     const demoExceeded = lifetimeCount > DEMO_LIFETIME_MAX;
     const withinWindows = minuteCount <= RATE_LIMIT_MAX_PER_WINDOW && dayCount <= RATE_LIMIT_MAX_PER_DAY;
     tx.set(ref, { minuteStart, minuteCount, dayStart, dayCount, lifetimeCount }, { merge: true });
-    return { allowed: withinWindows && !demoExceeded, demoExceeded };
+    const remaining = Math.max(0, DEMO_LIFETIME_MAX - lifetimeCount);
+    return { allowed: withinWindows && !demoExceeded, demoExceeded, remaining };
   });
 }
 
@@ -116,7 +120,11 @@ export default async function handler(req, res) {
       return;
     }
     const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
-    const { allowed, demoExceeded } = await checkRateLimit(app, ip);
+    const { allowed, demoExceeded, remaining } = await checkRateLimit(app, ip);
+    // Geht als X-Demo-Remaining-Header auf jede Antwort dieses Handlers raus
+    // (Erfolg wie Fehler), damit die App live anzeigen kann, wie viele
+    // Anfragen noch übrig sind.
+    res.setHeader('X-Demo-Remaining', String(remaining));
     if (!allowed) {
       if (demoExceeded) {
         // 403 statt 429: fetchWithRetry im Client behandelt 429 als
