@@ -21,8 +21,8 @@ import { firebaseConfig } from './firebaseConfig';
 import { queueErrorReport, flushErrorReports, setErrorReportingAppCheck } from './errorReporting';
 import AdminPanel from './AdminPanel';
 import { DEMO_LIFETIME_MAX } from '../shared/demoLimit.js';
+import { APP_ID as appId } from '../shared/appId.js';
 
-const appId = 'smartcraft-baustellenanalyse';
 // Gemini-Aufrufe laufen über eine eigene Serverless-Function (api/gemini.js),
 // damit der API-Key nie im Browser sichtbar ist.
 const apiUrl = '/api/gemini';

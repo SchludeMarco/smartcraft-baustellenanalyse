@@ -130,6 +130,8 @@ export const fetchResolvedContexts = async (db, appId) => {
   return snap.exists() ? (snap.data().resolvedContexts || {}) : {};
 };
 
+const NOTIFIED_CONTEXTS_DOC = (db, appId) => doc(db, 'artifacts', appId, 'adminMeta', 'notifiedContexts');
+
 /**
  * Markiert einen Fehlerkontext im Admin-Bereich als gelöst/wieder offen.
  * `resolved = false` entfernt den Eintrag statt ihn nur zu leeren, damit
@@ -145,6 +147,23 @@ export const setContextResolved = async (db, appId, context, resolved, meta = {}
     delete current[context];
   }
   await setDoc(ref, { resolvedContexts: current }, { merge: true });
+  if (resolved) {
+    // Setzt auch das Mail-Dedup zurück (siehe api/report-bug.js
+    // notifiedContextsRef): taucht der Kontext danach erneut auf, gilt das
+    // als Regression und alarmiert wieder per Mail statt weiter stumm zu
+    // bleiben.
+    try {
+      const notifiedRef = NOTIFIED_CONTEXTS_DOC(db, appId);
+      const notifiedSnap = await getDoc(notifiedRef);
+      const contexts = notifiedSnap.exists() ? { ...notifiedSnap.data().contexts } : {};
+      if (contexts[context]) {
+        delete contexts[context];
+        await setDoc(notifiedRef, { contexts }, { merge: true });
+      }
+    } catch (e) {
+      console.error('Zurücksetzen des Mail-Dedups fehlgeschlagen:', e);
+    }
+  }
   return current;
 };
 

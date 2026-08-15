@@ -3,6 +3,17 @@ import { getAppCheck } from 'firebase-admin/app-check';
 import { getFirestore } from 'firebase-admin/firestore';
 
 import { getErrorContextInfo } from '../src/errorContextInfo.js';
+import { APP_ID } from '../shared/appId.js';
+
+// Dokument, das sich pro Fehlerkontext merkt, ob dafür schon eine Mail raus
+// ist ("notified"). Liegt bewusst im selben adminMeta-Pfad wie
+// errorResolutions (siehe src/errorReporting.js) — dieselbe firestore.rules-
+// Regel (nur admin:true) schützt beide. AdminPanel.jsx löscht den Eintrag für
+// einen Kontext, sobald er dort als "gelöst" markiert wird (siehe
+// setContextResolved) — taucht der Fehler danach erneut auf, gilt das als
+// Regression und alarmiert wieder per Mail.
+const notifiedContextsRef = (db) =>
+  db.collection('artifacts').doc(APP_ID).collection('adminMeta').doc('notifiedContexts');
 
 // Bug-Reports sind selten (kein regulärer User-Flow), daher deutlich enger
 // begrenzt als /api/gemini — reicht für mehrere Crashes in Folge, bremst aber
@@ -140,6 +151,32 @@ export default async function handler(req, res) {
     res.status(400).json({ error: 'Missing context' });
     return;
   }
+
+  // Dedup: für einen bereits gemeldeten, noch offenen Fehlerkontext keine
+  // weitere Mail schicken (jede betroffene Nutzer-Anfrage würde sonst das
+  // Postfach zumüllen, bevor der Fehler überhaupt angesehen werden kann) —
+  // der Firestore-Report selbst (flushErrorReports in errorReporting.js)
+  // läuft davon unabhängig weiter, geht also nicht verloren.
+  if (app) {
+    try {
+      const db = getFirestore(app);
+      const ref = notifiedContextsRef(db);
+      const alreadySent = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const contexts = snap.exists ? (snap.data().contexts || {}) : {};
+        if (contexts[context]) return true;
+        tx.set(ref, { contexts: { ...contexts, [context]: true } }, { merge: true });
+        return false;
+      });
+      if (alreadySent) {
+        res.status(200).json({ ok: true, skipped: 'duplicate-context' });
+        return;
+      }
+    } catch (e) {
+      console.error('Dedup-Check für Bug-Mail fehlgeschlagen, sende trotzdem:', e);
+    }
+  }
+
   const { subject, html } = buildEmail({ context, message, stack, appVersion, userAgent, timestamp });
 
   try {

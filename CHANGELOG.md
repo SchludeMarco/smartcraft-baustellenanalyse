@@ -8,6 +8,25 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.26.4] – 2026-08-15
+
+### Behoben
+- **Wiederholt auftretende Fehler haben bei jedem Vorkommen erneut eine Mail
+  ausgelöst.** `queueErrorReport()` rief `sendBugReportEmail()` bislang
+  unbedingt bei jedem einzelnen Fehler auf — betraf denselben Fehlerkontext
+  (z.B. `google-tts-api`, `gemini-vision-api`) mehrere Nutzer, bevor er
+  behoben war, füllte das Support-Postfach mit einer Mail pro Vorkommen statt
+  einem einzigen Hinweis. Lösung: `api/report-bug.js` merkt sich pro
+  Fehlerkontext in Firestore (`adminMeta/notifiedContexts`), ob dafür schon
+  eine Mail raus ist, und überspringt weitere Mails für denselben, noch
+  offenen Kontext (der Firestore-Report selbst — sichtbar im Admin-Bereich —
+  läuft davon unabhängig weiter). `setContextResolved()` in
+  `errorReporting.js` löscht die Markierung, sobald ein Kontext im
+  Admin-Bereich als "gelöst" markiert wird — taucht der Fehler danach erneut
+  auf, gilt das als Regression und alarmiert wieder per Mail. Die
+  Firestore-App-ID (`appId`) wurde dafür nach `shared/appId.js` ausgelagert
+  (Single Source of Truth für `src/App.jsx` und `api/report-bug.js`).
+
 ## [1.26.3] – 2026-08-15
 
 ### Behoben

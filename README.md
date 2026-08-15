@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.26.3)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.26.4)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -181,7 +181,10 @@ per Firebase Custom Claim (`admin: true`, vergeben über
 Demo-Kontingent vollständig — der Claim wird serverseitig aus dem Firebase-ID-Token
 gelesen (`api/gemini.js`), nirgends im Code hinterlegt. Technische Fehler
 (React-Crashes, Firebase-/Gemini-API-Fehler) werden lokal gepuffert, sobald online
-automatisch nach Firestore gemeldet und zusätzlich per Mail zugestellt; derselbe
+automatisch nach Firestore gemeldet und zusätzlich per Mail zugestellt — pro
+Fehlerkontext aber nur einmal, bis er im Admin-Bereich als "gelöst" markiert
+wird (`api/report-bug.js`), damit ein verbreiteter Fehler nicht das Postfach
+flutet, bevor er überhaupt angesehen werden konnte. Derselbe
 Custom Claim schaltet auch den Admin-Bereich (`src/AdminPanel.jsx`) frei, der sie
 projektweit zusammenfasst — Zugriff wird durch `firestore.rules` durchgesetzt, nicht
 nur durch die App-UI.
