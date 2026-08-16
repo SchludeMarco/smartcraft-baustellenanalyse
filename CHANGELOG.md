@@ -8,6 +8,42 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.27.1] – 2026-08-16
+
+### Behoben
+- **Fehlerreporting hatte mehrere stille Lücken — unerwartete Fehler kamen
+  nicht mehr zuverlässig im Admin-Bereich/per Mail an, unabhängig vom Gerät.**
+  - `google-tts-api`- und `gemini-tts-summary-api`-Fehler nutzten Kontexte,
+    die nicht in `ERROR_CONTEXT_INFO` (`src/errorContextInfo.js`) registriert
+    waren. Das Mail-Dedup in `api/report-bug.js` bucketet unbekannte Kontexte
+    gemeinsam unter `_unrecognized` (siehe V1.26.5) — reale Fehler dieser
+    beiden Kontexte konnten dadurch von einem beliebigen anderen unbekannten
+    Fehler "verdeckt" werden und nie eine eigene Mail auslösen. Ergänzt,
+    zusammen mit den ebenfalls unregistrierten `app-check-init` und
+    `firebase-auth-fresh-session`.
+  - Der in V1.27.0 eingeführte Fallback auf Browser-TTS unterschied
+    fälschlich anhand des rohen HTTP-Status (`e.cause !== 429`), ob ein
+    Premium-TTS-Fehler "erwartet" ist. Ein `429` kann aber auch von der
+    Google-Cloud-TTS-API selbst kommen (z.B. Billing-/Kontingent-Problem
+    dort — dasselbe Fehlerbild wie der offene Gemini-Quota-Fehler in
+    `error_log.md`), wurde von `api/tts.js` unverändert durchgereicht und
+    wäre dadurch nie gemeldet worden. `api/tts.js` markiert eigene
+    429-Antworten jetzt mit `code: 'rate_limited'`/`'quota_exceeded'`;
+    `src/App.jsx` prüft in `speakText()` gezielt auf diesen `code` statt auf
+    den Status.
+  - Mehrere `setError(...)`-Zweige mit echten, unerwarteten Fehlern (keine
+    Exception, daher kein Catch-Block) lösten nie einen Report aus: leere/
+    unstrukturierte KI-Antworten in allen fünf `/api/gemini`-Aufrufern
+    (Hauptanalyse, Materialien, Sicherheit, Kundenbericht, Video-Suche inkl.
+    aller drei Fehlerzweige dort), Firestore-Fehler beim Laden der
+    Analyse-Historie (neuer Kontext `load-history-api`), Bildverarbeitung
+    (`fileToBase64()`, neuer Kontext `image-load`) sowie ein Browser ganz
+    ohne Web-Speech-API-Unterstützung (neuer Kontext
+    `browser-tts-unsupported`). Reine Bedienhinweise (fehlendes Bild/
+    Beschreibung, nichts zum Exportieren, vom Nutzer blockiertes
+    Druck-Popup, vom Nutzer abgebrochener Google-Login) bleiben bewusst
+    unauffällig, da kein Bug.
+
 ## [1.27.0] – 2026-08-16
 
 ### Geändert

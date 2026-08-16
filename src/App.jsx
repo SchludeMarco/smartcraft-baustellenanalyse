@@ -285,6 +285,8 @@ loadedHistory.push({ id: doc.id, ...doc.data() });
 setHistory(loadedHistory);
 } catch (e) {
 console.error("Fehler beim Laden der Historie:", e);
+queueErrorReport('load-history-api', e);
+flushErrorReports(db, userId, appId);
 setError("Fehler beim Laden der Analyse-Historie: " + e.message);
 } finally {
 setIsLoading(false);
@@ -600,6 +602,8 @@ return byGender || germanVoices[0] || null;
 const speakWithBrowserTts = useCallback((text) => {
 if (typeof window === 'undefined' || !window.speechSynthesis) {
 // Einziger tatsächlicher Dead-End: Browser ohne Web Speech API.
+queueErrorReport('browser-tts-unsupported', new Error('Web Speech API nicht verfügbar'));
+flushErrorReports(db, userId, appId);
 setError('Sprachausgabe wird von diesem Browser nicht unterstützt.');
 return;
 }
@@ -612,7 +616,7 @@ utterance.onstart = () => setIsTtsPlaying(true);
 utterance.onend = () => setIsTtsPlaying(false);
 utterance.onerror = () => setIsTtsPlaying(false);
 window.speechSynthesis.speak(utterance);
-}, [ttsGender, pickBrowserVoice]);
+}, [ttsGender, pickBrowserVoice, db, userId, appId]);
 // Stoppt Wiedergabe unabhängig davon, welche der beiden Engines gerade läuft.
 const stopSpeaking = useCallback(() => {
 audioRef.current?.pause();
@@ -642,10 +646,14 @@ playAudioQueue(urls);
 // Fehler, ...) — ohne Fehlermeldung auf die Browser-Stimme umschalten,
 // damit immer Audio verfügbar ist.
 console.warn('Premium-TTS nicht verfügbar, Fallback auf Browser-Stimme:', e);
-// Kontingent voll (code "quota_exceeded") oder IP-Rate-Limit (429) sind
-// erwartete Fälle, kein Bug — nur unerwartete Fehler landen im Admin-
-// Fehlerreport (gleiches Muster wie die bisherige 403-Sonderbehandlung).
-if (e.cause !== 429) {
+// Kontingent voll ("quota_exceeded") oder eigenes IP-Rate-Limit
+// ("rate_limited", beide von api/tts.js mit "code" markiert) sind erwartete
+// Fälle, kein Bug. Wichtig: NICHT anhand von e.cause === 429 filtern — ein
+// 429 kann auch von der Google-Cloud-TTS-API selbst kommen (z.B. Billing/
+// Kontingent-Problem dort, siehe error_log.md #5 für dasselbe Muster bei
+// Gemini) und wird ohne "code" durchgereicht. Nur explizit markierte,
+// erwartete Fälle bleiben unauffällig — alles andere landet im Admin-Report.
+if (e.code !== 'quota_exceeded' && e.code !== 'rate_limited') {
 queueErrorReport('google-tts-api', e);
 flushErrorReports(db, userId, appId);
 }
@@ -915,10 +923,13 @@ return;
 const base64 = await fileToBase64(file);
 setSelectedImageBase64(base64);
 } catch (e) {
+console.error("Fehler beim Laden des Bildes:", e);
+queueErrorReport('image-load', e);
+flushErrorReports(db, userId, appId);
 setError("Fehler beim Laden des Bildes.");
 }
 }
-}, [handleReset]);
+}, [handleReset, db, userId, appId]);
 // --- FUNKTION: ANALYSE IN FIREBASE SPEICHERN ---
 const saveAnalysis = useCallback(async (analysisData) => {
 if (!db || !userId) {
@@ -1058,6 +1069,8 @@ problemDescription,
 solutionText: solution,
 });
 } else {
+queueErrorReport('gemini-vision-api', new Error('Antwort ohne verwertbaren Kandidaten'));
+flushErrorReports(db, userId, appId);
 setError("Konnte keine gültige Antwort von der KI erhalten. Mögliches Problem: Das Bild ist zu unklar oder der Dienst ist nicht erreichbar.");
 }
 } catch (e) {
@@ -1113,9 +1126,13 @@ const parsedJson = JSON.parse(jsonString);
 setMaterialList(parsedJson);
 } catch (parseError) {
 console.error("JSON Parsing Fehler (Material):", parseError);
+queueErrorReport('gemini-materials-api', parseError);
+flushErrorReports(db, userId, appId);
 setError("Fehler beim Verarbeiten der KI-Antwort (ungültiges JSON-Format oder unvollständige Antwort).");
 }
 } else {
+queueErrorReport('gemini-materials-api', new Error('Antwort ohne strukturierte Materialliste'));
+flushErrorReports(db, userId, appId);
 setError("Konnte keine Materialliste erstellen. Die KI hat keine strukturierte Antwort geliefert.");
 }
 } catch (e) {
@@ -1163,6 +1180,8 @@ const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
 if (text) {
 setSafetyTips(text);
 } else {
+queueErrorReport('gemini-safety-api', new Error('Antwort ohne verwertbaren Kandidaten'));
+flushErrorReports(db, userId, appId);
 setError("Konnte den Sicherheits-Check nicht erstellen.");
 }
 } catch (e) {
@@ -1210,6 +1229,8 @@ const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
 if (text) {
 setClientReport(text);
 } else {
+queueErrorReport('gemini-client-report-api', new Error('Antwort ohne verwertbaren Kandidaten'));
+flushErrorReports(db, userId, appId);
 setError("Konnte den Kundenbericht nicht erstellen.");
 }
 } catch (e) {
@@ -1262,6 +1283,8 @@ const callGeminiVideoSearch = useCallback(async () => {
       const jsonMatch = responseTextContent.match(/\[\s*\{[\s\S]*\}\s*\]/);
       if (!jsonMatch || !jsonMatch[0]) {
         console.error("JSON Regex Match Fehler:", responseTextContent);
+        queueErrorReport('gemini-video-search-api', new Error('Antwort ohne extrahierbares JSON-Array'));
+        flushErrorReports(db, userId, appId);
         setError("Die KI-Antwort enthielt kein gültiges JSON-Array. Bitte erneut versuchen.");
         return;
       }
@@ -1273,13 +1296,19 @@ const callGeminiVideoSearch = useCallback(async () => {
         if (validLinks.length > 0) {
           setVideoLinks(validLinks);
         } else {
+          queueErrorReport('gemini-video-search-api', new Error('Keine gültigen YouTube-Links im Ergebnis'));
+          flushErrorReports(db, userId, appId);
           setError("Die KI hat keine passenden YouTube-Video-Links gefunden.");
         }
       } catch (parseError) {
         console.error("JSON Parsing Fehler (Video Search):", parseError);
+        queueErrorReport('gemini-video-search-api', parseError);
+        flushErrorReports(db, userId, appId);
         setError("Fehler beim Verarbeiten der KI-Antwort (ungültiges JSON-Format).");
       }
     } else {
+      queueErrorReport('gemini-video-search-api', new Error('Antwort ohne verwertbaren Kandidaten'));
+      flushErrorReports(db, userId, appId);
       setError("Konnte die Video-Links nicht generieren. Die KI hat keine verwertbare Antwort geliefert.");
     }
   } catch (e) {

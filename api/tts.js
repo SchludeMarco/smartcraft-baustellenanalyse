@@ -232,7 +232,7 @@ export default async function handler(req, res) {
     const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
     const withinLimit = await checkRateLimit(app, ip);
     if (!withinLimit) {
-      res.status(429).json({ error: 'Too many requests' });
+      res.status(429).json({ error: 'Too many requests', code: 'rate_limited' });
       return;
     }
     const { allowed: withinQuota, remaining } = await checkPremiumQuota(app, decoded.sub);
