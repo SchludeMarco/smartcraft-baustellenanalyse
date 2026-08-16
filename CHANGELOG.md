@@ -8,6 +8,20 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.27.2] – 2026-08-16
+
+### Behoben
+- **README-Hinweis zu fehlendem `RESEND_API_KEY` war veraltet.** Ein Blick in
+  die tatsächliche Vercel-Konfiguration (`vercel env ls production`) zeigt:
+  `RESEND_API_KEY` ist gesetzt (seit ca. 19h), ebenso `SUPPORT_EMAIL`/
+  `VITE_ADMIN_EMAIL` als Empfänger — die Mail-Benachrichtigung bei
+  Fehlerreports ist also bereits aktiv, README behauptete fälschlich das
+  Gegenteil. Korrigiert und um einen Hinweis ergänzt: `RESEND_FROM_EMAIL`
+  ist nicht gesetzt, Versand läuft dadurch über Resends Sandbox-Absender
+  `onboarding@resend.dev`, der laut Resend nur an die beim Resend-Konto
+  hinterlegte Signup-Adresse zustellen darf — falls Reports trotz aktiver
+  Konfiguration nicht ankommen, ist das der erste Verdächtige.
+
 ## [1.27.1] – 2026-08-16
 
 ### Behoben

@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.27.1)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.27.2)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -260,12 +260,18 @@ Environment Variables in den Vercel-Projekteinstellungen:
   Transaktion reicht Vercels Default-Timeout von 10s für den Gemini-
   Vision-Aufruf oft nicht mehr — deshalb `export const config = { maxDuration: 30 }`
   in `api/gemini.js`.
-- **`RESEND_API_KEY` ist im deployten Projekt ebenfalls nicht gesetzt** —
-  die in `api/report-bug.js`/`errorReporting.js` beschriebene automatische
-  Mail-Benachrichtigung bei Fehlerreports läuft dadurch aktuell ins Leere.
-  Der Firestore-Weg (Admin Panel, `AdminPanel.jsx`) ist davon unabhängig und
-  bleibt die verlässliche Quelle; die Mail ist nur ein zusätzlicher
-  Sofort-Hinweis, siehe Kommentar in `errorReporting.js`.
+- **`RESEND_API_KEY`/`SUPPORT_EMAIL`/`VITE_ADMIN_EMAIL` sind im deployten
+  Projekt gesetzt** — die automatische Mail-Benachrichtigung bei
+  Fehlerreports (`api/report-bug.js`/`errorReporting.js`) ist aktiv.
+  `RESEND_FROM_EMAIL` ist nicht gesetzt, Versand läuft daher über Resends
+  Sandbox-Absender `onboarding@resend.dev` — dieser darf laut Resend nur an
+  die beim Resend-Konto hinterlegte Signup-Adresse zustellen. Empfangen
+  Fehlerreports trotz gesetztem `RESEND_API_KEY` keine Mail, zuerst prüfen,
+  ob `SUPPORT_EMAIL`/`VITE_ADMIN_EMAIL` mit dieser Adresse übereinstimmt;
+  sonst `RESEND_FROM_EMAIL` auf eine in resend.com/domains verifizierte
+  eigene Domain setzen. Der Firestore-Weg (Admin Panel, `AdminPanel.jsx`) ist
+  von alldem unabhängig und bleibt die verlässliche Quelle; die Mail ist nur
+  ein zusätzlicher Sofort-Hinweis, siehe Kommentar in `errorReporting.js`.
 - **TTS (Sprachausgabe)** liest die KI-Diagnose auf Wunsch vor — praktisch auf der
   Baustelle, wenn beide Hände beschäftigt sind. Zwei Engines, gestaffelt nach
   Anmeldestatus, garantieren dabei immer Ton — nie eine Sackgasse ohne Audio:
