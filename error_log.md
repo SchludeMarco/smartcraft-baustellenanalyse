@@ -31,26 +31,30 @@ neu als offener Eintrag dokumentieren.
 
 ## Offene Fehler
 
-### 5. gemini-tts-summary-api: "You exceeded your current quota... free_tier_requests, limit: 20"
+### 5. Alle `/api/gemini`-Aufrufer: "You exceeded your current quota... free_tier_requests, limit: 20"
 
-- **Status:** Offen
-- **Kontext:** `gemini-tts-summary-api` (`callGeminiTtsSummaryAPI` in
-  `src/App.jsx`, ruft `/api/gemini` → Google Generative Language API auf).
-  Strukturell dasselbe Risiko besteht für jeden der anderen fünf
-  `/api/gemini`-Aufrufer (Hauptanalyse, Materialien, Sicherheit,
-  Kundenbericht, Video-Suche), da alle denselben `GEMINI_API_KEY` teilen.
+- **Status:** Offen (das eigentliche Kontingent-Problem bleibt bestehen — nur
+  die Symptomanzeige wurde in V1.27.4 behoben, siehe Eintrag 7 unten)
+- **Kontext:** Ursprünglich bei `gemini-tts-summary-api`
+  (`callGeminiTtsSummaryAPI` in `src/App.jsx`, ruft `/api/gemini` → Google
+  Generative Language API auf) beobachtet. Am 16.8.2026 (V1.27.3) auch bei
+  `gemini-vision-api` (Hauptanalyse) reproduziert — bestätigt damit das
+  strukturell gleiche Risiko für jeden der sechs `/api/gemini`-Aufrufer
+  (Hauptanalyse, TTS-Kurzfassung, Materialien, Sicherheit, Kundenbericht,
+  Video-Suche), da alle denselben `GEMINI_API_KEY` teilen.
 - **Nachricht:** "You exceeded your current quota... Quota exceeded for
   metric: generativelanguage.googleapis.com/generate_content_free_tier_requests,
-  limit: 20, model: gemini-3.7-flash" (15.8.2026, 17:30 Uhr, V1.26.6,
-  Android/Chrome Mobile). Dank Fix Nr. 4 (`extractApiErrorMessage`) zeigt der
-  Report erstmals den echten Google-Fehlertext statt "[object Object]".
+  limit: 20" — zuletzt 16.8.2026 bei der Hauptanalyse (V1.27.3), zuvor
+  15.8.2026, 17:30 Uhr, V1.26.6 bei der TTS-Kurzfassung (Android/Chrome
+  Mobile). Dank Fix Nr. 4 (`extractApiErrorMessage`) zeigt der Report den
+  echten Google-Fehlertext statt "[object Object]".
 - **Vermutliche Ursache:** Der in `GEMINI_API_KEY` hinterlegte Schlüssel hängt
   an einem Google-Cloud-Projekt **ohne aktiviertes Billing** und läuft damit
   im kostenlosen Free-Tier von `generativelanguage.googleapis.com`. Dessen
   Kontingent für das aktuell hinter dem Alias `gemini-flash-latest`
-  (`api/gemini.js`, `MODEL_NAME`) liegende Modell `gemini-3.7-flash` ist mit
-  20 Requests sehr klein — und gilt projektweit über ALLE Nutzer der App
-  gemeinsam, nicht pro Besucher. Der eigene IP-Rate-Limiter in `api/gemini.js`
+  (`api/gemini.js`, `MODEL_NAME`) liegende Modell ist mit 20 Requests sehr
+  klein — und gilt projektweit über ALLE Nutzer der App gemeinsam, nicht pro
+  Besucher. Der eigene IP-Rate-Limiter in `api/gemini.js`
   (12/Minute, 200/Tag, siehe `RATE_LIMIT_MAX_PER_WINDOW`/`_DAY`) ist auf diesen
   Fall wirkungslos: Er bremst nur einzelne IPs, kann aber das global geteilte
   20er-Kontingent bei mehreren gleichzeitigen Nutzern nicht schützen.
@@ -63,6 +67,34 @@ neu als offener Eintrag dokumentieren.
 ---
 
 ## Gelöste Fehler
+
+### 7. Fünf von sechs `/api/gemini`-Aufrufern zeigten den rohen Google-Fehlertext direkt an
+
+- **Status:** Gelöst (V1.27.4)
+- **Kontext:** Hauptanalyse (`gemini-vision-api`), Materialien, Sicherheit,
+  Kundenbericht und Video-Suche in `src/App.jsx`. Nur der TTS-Kurzfassungs-
+  Aufrufer (`gemini-tts-summary-api`) zeigte bereits vorher eine feste,
+  deutsche Nutzermeldung ohne `e.message`.
+- **Nachricht:** Direkter Nutzerbeobachtung, ausgelöst durch Eintrag 5
+  (Quota-Fehler): "Analysefehler / Fehler bei der Verbindung zur Analyse: You
+  exceeded your current quota, please check your plan and billing
+  details..." — der komplette, englische Google-API-Fehlertext (inkl.
+  Verweis auf Google-eigene Rate-Limit-Dokulinks) landete unverändert in der
+  für Endnutzer sichtbaren Fehlermeldung.
+- **Ursache:** Die fünf Catch-Blöcke hängten `e.message` direkt an einen
+  deutschen Präfix an (z.B. `"Fehler bei der Verbindung zur Analyse: " +
+  e.message`). `e.message` stammt bei Server-/Upstream-Fehlern aus
+  `extractApiErrorMessage()` und enthält damit im Zweifel den rohen,
+  englischen Google-Fehlertext (Quota, Safety-Block, ungültige Anfrage) statt
+  einer für Endnutzer verständlichen Meldung — irreführend, da z.B. "check
+  your plan and billing details" beim App-Nutzer keinen Sinn ergibt (das
+  betrifft nur das Google-Cloud-Projekt des Betreibers, siehe Eintrag 5).
+- **Lösung:** Alle fünf Meldungen auf feste, deutsche Texte ohne `e.message`
+  umgestellt (Vorbild: der bereits korrekte TTS-Kurzfassungs-Aufrufer). Der
+  volle Originalfehler geht dabei nicht verloren — `queueErrorReport()`
+  speichert `e.message` weiterhin unverändert für den Admin-Bereich, nur die
+  für den Endnutzer sichtbare `setError()`-Meldung wurde vereinheitlicht.
+  Behebt nicht die zugrunde liegende Quota-Ursache (Eintrag 5 bleibt offen).
 
 ### 6. Alle `/api/gemini`-Aufrufer: "Fehler bei der Verbindung zur Analyse: ... currently experiencing high demand"
 

@@ -8,6 +8,23 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.27.4] – 2026-08-16
+
+### Behoben
+- **Fünf von sechs `/api/gemini`-Aufrufern zeigten den rohen, englischen
+  Google-Fehlertext direkt an.** Bei einem Quota-Fehler ("You exceeded your
+  current quota, please check your plan and billing details...") landete
+  dieser Text unverändert in der Nutzer-Fehlermeldung — irreführend, da der
+  Hinweis auf "plan and billing" nur das Google-Cloud-Projekt des Betreibers
+  betrifft (siehe `error_log.md`, Eintrag 5), nicht den App-Nutzer.
+  Hauptanalyse, Materialien, Sicherheit, Kundenbericht und Video-Suche
+  (`src/App.jsx`) hängten `e.message` direkt an einen deutschen Präfix an;
+  nur die TTS-Kurzfassung zeigte bereits vorher eine feste, verständliche
+  Meldung. Alle fünf jetzt auf feste deutsche Texte umgestellt, der volle
+  Originalfehler bleibt über `queueErrorReport()` weiterhin im Admin-Bereich
+  sichtbar. Behebt nicht die zugrunde liegende Quota-Ursache — dafür muss
+  Billing für das Google-Cloud-Projekt aktiviert werden.
+
 ## [1.27.3] – 2026-08-16
 
 ### Behoben

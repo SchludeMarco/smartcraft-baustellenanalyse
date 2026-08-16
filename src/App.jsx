@@ -1084,7 +1084,7 @@ setError("Konnte keine gültige Antwort von der KI erhalten. Mögliches Problem:
 console.error("API-Fehler:", e);
 queueErrorReport('gemini-vision-api', e);
 flushErrorReports(db, userId, appId);
-setError("Fehler bei der Verbindung zur Analyse: " + e.message);
+setError("Die Analyse konnte nicht abgeschlossen werden. Bitte in ein paar Minuten erneut versuchen.");
 } finally {
 setIsAnalyzing(false);
 }
@@ -1146,7 +1146,7 @@ setError("Konnte keine Materialliste erstellen. Die KI hat keine strukturierte A
 console.error("API-Fehler (Material):", e);
 queueErrorReport('gemini-materials-api', e);
 flushErrorReports(db, userId, appId);
-setError("Fehler beim Generieren der Materialliste: " + e.message);
+setError("Die Materialliste konnte nicht erstellt werden. Bitte in ein paar Minuten erneut versuchen.");
 } finally {
 setIsGeneratingMaterials(false);
 }
@@ -1195,7 +1195,7 @@ setError("Konnte den Sicherheits-Check nicht erstellen.");
 console.error("API-Fehler (Sicherheit):", e);
 queueErrorReport('gemini-safety-api', e);
 flushErrorReports(db, userId, appId);
-setError("Fehler beim Generieren des Sicherheits-Checks: " + e.message);
+setError("Der Sicherheits-Check konnte nicht erstellt werden. Bitte in ein paar Minuten erneut versuchen.");
 } finally {
 setIsGeneratingSafety(false);
 }
@@ -1244,7 +1244,7 @@ setError("Konnte den Kundenbericht nicht erstellen.");
 console.error("API-Fehler (Kundenbericht):", e);
 queueErrorReport('gemini-client-report-api', e);
 flushErrorReports(db, userId, appId);
-setError("Fehler beim Generieren des Kundenberichts: " + e.message);
+setError("Der Kundenbericht konnte nicht erstellt werden. Bitte in ein paar Minuten erneut versuchen.");
 } finally {
 setIsGeneratingReport(false);
 }
@@ -1322,7 +1322,7 @@ const callGeminiVideoSearch = useCallback(async () => {
     console.error("API-Fehler (Video Search):", e);
     queueErrorReport('gemini-video-search-api', e);
     flushErrorReports(db, userId, appId);
-    setError("Fehler beim Suchen der Video-Anleitungen: " + e.message);
+    setError("Die Video-Anleitungen konnten nicht gefunden werden. Bitte in ein paar Minuten erneut versuchen.");
   } finally {
     setIsGeneratingVideos(false);
   }
