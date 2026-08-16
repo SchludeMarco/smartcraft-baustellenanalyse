@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.26.6)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.27.0)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -229,7 +229,6 @@ Environment Variables in den Vercel-Projekteinstellungen:
 |---|---|---|
 | `GEMINI_API_KEY` | server-only (kein `VITE_`-Prefix) | aistudio.google.com/apikey |
 | `GOOGLE_TTS_API_KEY` | server-only | Google Cloud Console → APIs & Dienste → Anmeldedaten (Cloud Text-to-Speech API muss aktiviert sein, Abrechnungskonto erforderlich) |
-| `ALLOWED_TTS_EMAIL` | server-only | einzige Google-Konto-E-Mail, für die Vorlesen freigeschaltet ist — ohne diese Variable lehnt `api/tts.js` alle Anfragen ab |
 | `VITE_FIREBASE_API_KEY` | client (öffentlich vorgesehen) | Firebase-Projekteinstellungen → Meine Apps |
 | `VITE_FIREBASE_AUTH_DOMAIN` | client | „ |
 | `VITE_FIREBASE_PROJECT_ID` | client | „ |
@@ -268,30 +267,43 @@ Environment Variables in den Vercel-Projekteinstellungen:
   bleibt die verlässliche Quelle; die Mail ist nur ein zusätzlicher
   Sofort-Hinweis, siehe Kommentar in `errorReporting.js`.
 - **TTS (Sprachausgabe)** liest die KI-Diagnose auf Wunsch vor — praktisch auf der
-  Baustelle, wenn beide Hände beschäftigt sind. Läuft serverseitig über einen
-  eigenen Proxy (`api/tts.js`, gleiches Muster wie `api/gemini.js`) zur Google
-  Cloud Text-to-Speech API (WaveNet-Stimmen `de-DE-Wavenet-A`/`-B`) — nach einem
-  gescheiterten Anlauf über die browsereigene Web Speech API, die auf vielen
-  Systemen Stimmen listete, die gar keinen Ton ausgaben, und lange Texte nach
-  ca. 15s ohne Fehlermeldung abbrach. Die Audiodaten (MP3, base64) werden über
-  ein `<audio>`-Element abgespielt und pro Modus+Geschlecht clientseitig
-  zwischengespeichert, damit erneutes Abspielen keine erneute (kostenpflichtige)
-  Anfrage auslöst. Weiblich/männlich wählt jetzt echte, unterschiedliche
-  Stimmen statt einer Tonhöhen-Annäherung; Standard ist männlich. Ein zweiter
-  Umschalter wählt zwischen "Kurz" (nur die wichtigsten Punkte, per Gemini
-  zusammengefasst und für die aktuelle Diagnose zwischengespeichert — Standard)
-  und "Vollständig" (der komplette Diagnosetext, serverseitig an Satzenden in
-  Häppchen unter 5000 Byte aufgeteilt, da die Cloud-API das pro Anfrage limitiert).
-  Läuft im kostenlosen Kontingent von Google Cloud (Stand: 1 Mio. Zeichen/Monat
-  für WaveNet-Stimmen), benötigt aber ein GCP-Projekt mit aktivierter
-  Abrechnung und API — siehe `GOOGLE_TTS_API_KEY` in der Env-Var-Tabelle unten.
-  **Als Kostenschutz serverseitig auf ein einziges Google-Konto beschränkt**
-  (`ALLOWED_TTS_EMAIL`, siehe Env-Var-Tabelle — bewusst als Variable statt
-  Klartext im Repo, da es öffentlich ist): `api/tts.js` verifiziert das
-  mitgeschickte Firebase-ID-Token direkt gegen Googles öffentliche
-  Zertifikate (kein `FIREBASE_SERVICE_ACCOUNT_KEY` nötig) und prüft
-  `email`/`email_verified` daraus. Alle anderen Nutzer — auch mit anderem
-  Google-Konto oder anonym — bekommen `403 Forbidden`.
+  Baustelle, wenn beide Hände beschäftigt sind. Zwei Engines, gestaffelt nach
+  Anmeldestatus, garantieren dabei immer Ton — nie eine Sackgasse ohne Audio:
+  - **Nicht angemeldete Nutzer** bekommen ausschließlich die browsereigene
+    Web Speech API (`window.speechSynthesis`, kostenlos, kein Server-Call).
+    `pickBrowserVoice()` (`src/App.jsx`) wählt dabei per bekannten
+    Stimmnamen-Mustern eine deutsche, zum gewählten Geschlecht passende
+    Stimme; ohne Treffer die erste verfügbare deutsche Stimme, sonst die
+    Browser-Standardstimme.
+  - **Angemeldete Google-Nutzer** bekommen zusätzlich Premium-TTS über einen
+    eigenen Server-Proxy (`api/tts.js`, gleiches Muster wie `api/gemini.js`)
+    zur Google Cloud Text-to-Speech API (WaveNet-Stimmen
+    `de-DE-Wavenet-A`/`-B`) — bis zu einem serverseitig durchgesetzten
+    Tageskontingent von `PREMIUM_TTS_DAILY_MAX` (`shared/ttsQuota.js`,
+    Stand: 15) pro Nutzer (Firestore-Zähler `_ttsPremiumQuota/{uid}`, per
+    ID-Token verifiziert, nicht vom Client behauptet). Ist das Kontingent
+    aufgebraucht oder liefert der Server einen Fehler (Rate-Limit, 5xx, ...),
+    schaltet `speakText()` automatisch und **ohne Fehlermeldung** auf die
+    Browser-Stimme des jeweiligen Nutzers um.
+  - Die Audiodaten der Premium-Engine (MP3, base64) werden über ein
+    `<audio>`-Element abgespielt und pro Modus+Geschlecht clientseitig
+    zwischengespeichert, damit erneutes Abspielen keine erneute
+    (kostenpflichtige) Anfrage auslöst — die Browser-Engine braucht kein
+    Caching (kostenlos, synchron verfügbar). Weiblich/männlich wählt in
+    beiden Engines echte, unterschiedliche Stimmen; Standard ist männlich.
+    Ein zweiter Umschalter wählt zwischen "Kurz" (nur die wichtigsten
+    Punkte, per Gemini zusammengefasst und für die aktuelle Diagnose
+    zwischengespeichert — Standard) und "Vollständig" (der komplette
+    Diagnosetext, bei der Premium-Engine serverseitig an Satzenden in
+    Häppchen unter 5000 Byte aufgeteilt, da die Cloud-API das pro Anfrage
+    limitiert) — unabhängig davon, welche Engine gerade spielt.
+  - Premium-TTS läuft im kostenlosen Kontingent von Google Cloud (Stand:
+    1 Mio. Zeichen/Monat für WaveNet-Stimmen), benötigt aber ein
+    GCP-Projekt mit aktivierter Abrechnung und API — siehe
+    `GOOGLE_TTS_API_KEY` in der Env-Var-Tabelle unten. Kostenschutz kommt
+    über das Tageskontingent (Code-Konstante, kein Env-Var, analog
+    `DEMO_LIFETIME_MAX`) statt — wie bis V1.26.6 — über ein einzelnes
+    freigeschaltetes Konto.
 - **Google-Sign-In ist optional, nicht Pflicht:** jeder Nutzer startet weiterhin
   sofort anonym (keine Hürde vor der ersten Nutzung) und kann die Sitzung im
   Profil-Menü freiwillig per Google-Konto "aufwerten". Wer das nicht tut, bleibt

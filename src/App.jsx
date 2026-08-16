@@ -50,6 +50,12 @@ const SYSTEM_INSTRUCTION_SAFETY = "Du bist ein Arbeitsschutz-Experte (Sicherheit
 const SYSTEM_INSTRUCTION_CLIENT_REPORT = "Du bist ein Projektmanager mit ausgezeichneten Kommunikationsfähigkeiten. Nimm die technische Lösung und formuliere eine professionelle, jargonfreie Zusammenfassung für den Endkunden oder Projektleiter. Füge am Ende eine Liste der administrativen nächsten Schritte (z.B. Genehmigungen, Abnahmen) hinzu, die erforderlich sind. Antworte im Markdown-Format.";
 const SYSTEM_INSTRUCTION_VIDEO_FINAL = "Du bist ein YouTube-Experte für Handwerks-Tutorials. Basierend auf dem folgenden Lösungsvorschlag, suche und wähle die 3-5 relevantesten und aktuellsten YouTube-Video-Links aus, die eine visuelle Anleitung zur Reparatur bieten. Ignoriere alle Nicht-YouTube-Links. Antworte AUSSCHLIESSLICH mit einem JSON-Array im Format [{\"title\": \"...\", \"uri\": \"https://www.youtube.com/watch?v=...\"}], ohne zusätzlichen Text davor oder danach.";
 const SYSTEM_INSTRUCTION_TTS_SUMMARY = "Du bist ein erfahrener Handwerksmeister. Fasse die folgende Diagnose und Lösung für eine mündliche Vorlesung auf das Wesentliche zusammen: das Problem und die wichtigsten Lösungsschritte, in maximal 5 kurzen Sätzen. Antworte ausschließlich in reinem Fließtext ohne Markdown, Überschriften oder Aufzählungszeichen, da der Text direkt vorgelesen wird.";
+// Bekannte deutsche Stimmnamen, um bei der Browser-Sprachausgabe (Fallback,
+// siehe pickBrowserVoice in App) grob das gewünschte Geschlecht zu treffen —
+// SpeechSynthesisVoice liefert dafür kein eigenes Attribut, nur den
+// (plattformabhängigen) Anzeigenamen.
+const FEMALE_VOICE_HINTS = ['anna', 'petra', 'katja', 'female', 'hedda', 'helena', 'marlene'];
+const MALE_VOICE_HINTS = ['stefan', 'markus', 'male', 'yannick', 'conrad'];
 // JSON Schema für die Materialliste
 const MATERIAL_SCHEMA = {
 type: "ARRAY",
@@ -400,6 +406,10 @@ const [userId, setUserId] = useState(null);
 // Voller Auth-User (Firebase User-Objekt): liefert isAnonymous/displayName/
 // email/photoURL für Profil-UI und Fehlerreport-Zuordnung (Google-Login).
 const [authUser, setAuthUser] = useState(null);
+// Angemeldet mit echtem Google-Konto (nicht die anonyme Standard-Session) —
+// entscheidet u.a., ob Premium-TTS (api/tts.js) versucht wird oder direkt
+// die browsereigene Sprachausgabe läuft (siehe speakText weiter unten).
+const isGoogleUser = authUser?.isAnonymous === false;
 const [isAuthReady, setIsAuthReady] = useState(false);
 const [showAuth, setShowAuth] = useState(false);
 // Anonyme Sitzung, die beim App-Start bereits im Browser persistiert war
@@ -498,13 +508,23 @@ useEffect(() => {
 setTtsShortText(null);
 clearTtsAudioCache();
 }, [solutionText, clearTtsAudioCache]);
-// Laufende Sprachausgabe beim Verlassen der Seite/Komponente stoppen
+// Laufende Sprachausgabe beim Verlassen der Seite/Komponente stoppen —
+// sowohl Premium-Audio (<audio>-Element) als auch Browser-TTS, je nachdem
+// welche Engine gerade lief.
 useEffect(() => {
 return () => {
 audioRef.current?.pause();
+if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
 clearTtsAudioCache();
 };
 }, [clearTtsAudioCache]);
+// Manche Browser (v.a. Chrome) laden Stimmen asynchron nach — einmaliges
+// frühes Anstoßen von getVoices() sorgt dafür, dass pickBrowserVoice() beim
+// ersten Klick auf "Vorlesen" schon eine volle Stimmenliste sieht, statt nur
+// die (oft leere) Sofort-Antwort.
+useEffect(() => {
+if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.getVoices();
+}, []);
 // Markdown-Reste (Sternchen, Rauten, Aufzählungsstriche) vor dem Vorlesen entfernen
 const stripMarkdownForTts = (text) => text
 .replace(/[*_#`]/g, '')
@@ -540,9 +560,9 @@ setIsTtsPlaying(true);
 playNext();
 }, []);
 const fetchTtsAudio = useCallback(async (text) => {
-// Vorlesen ist serverseitig auf ein bestimmtes Google-Konto beschränkt
-// (siehe api/tts.js) — dafür muss das Firebase-ID-Token des eingeloggten
-// Nutzers mitgeschickt werden, nicht nur der App-Check-Nachweis.
+// Premium-TTS erfordert ein angemeldetes Google-Konto (siehe api/tts.js) —
+// dafür muss das Firebase-ID-Token des eingeloggten Nutzers mitgeschickt
+// werden, nicht nur der App-Check-Nachweis.
 const idToken = auth?.currentUser ? await getIdToken(auth.currentUser).catch(() => null) : null;
 const response = await fetchWithRetry(apiTtsUrl, {
 method: 'POST',
@@ -554,13 +574,58 @@ body: JSON.stringify({ text: stripMarkdownForTts(text), gender: ttsGender }),
 });
 const responseText = await response.text();
 if (!response.ok || !responseText) {
-throw new Error(responseText || `TTS-API-Fehler mit Status: ${response.status}`, { cause: response.status });
+const err = new Error(responseText || `TTS-API-Fehler mit Status: ${response.status}`, { cause: response.status });
+// Kontingent-/Rate-Limit-Antworten tragen einen "code" im JSON-Body (siehe
+// api/tts.js) — erlaubt speakText, erwartete von unerwarteten Fehlern zu
+// unterscheiden, ohne den Body ein zweites Mal zu parsen.
+try { err.code = JSON.parse(responseText)?.code; } catch { /* kein JSON, z.B. Netzwerkfehlertext */ }
+throw err;
 }
 const data = JSON.parse(responseText);
 if (!data.audioChunks?.length) throw new Error('Leere Antwort von der TTS-API.');
 return data.audioChunks.map(base64ToBlobUrl);
 }, [ttsGender, auth]);
+const pickBrowserVoice = useCallback((gender) => {
+if (typeof window === 'undefined' || !window.speechSynthesis) return null;
+const germanVoices = window.speechSynthesis.getVoices().filter((v) => v.lang?.toLowerCase().startsWith('de'));
+const hints = gender === 'female' ? FEMALE_VOICE_HINTS : MALE_VOICE_HINTS;
+const byGender = germanVoices.find((v) => hints.some((hint) => v.name.toLowerCase().includes(hint)));
+return byGender || germanVoices[0] || null;
+}, []);
+// Browsereigene Sprachausgabe (Web Speech API) — kostenlos, ohne Server-
+// Roundtrip. Läuft für nicht angemeldete Nutzer immer und dient angemeldeten
+// Nutzern als garantierter Fallback, wenn Premium-TTS aus irgendeinem Grund
+// nicht verfügbar ist (Kontingent voll, Rate-Limit, Server-Fehler) — siehe
+// speakText. Damit gibt es nie eine Sackgasse ohne Audio.
+const speakWithBrowserTts = useCallback((text) => {
+if (typeof window === 'undefined' || !window.speechSynthesis) {
+// Einziger tatsächlicher Dead-End: Browser ohne Web Speech API.
+setError('Sprachausgabe wird von diesem Browser nicht unterstützt.');
+return;
+}
+window.speechSynthesis.cancel();
+const utterance = new SpeechSynthesisUtterance(stripMarkdownForTts(text));
+utterance.lang = 'de-DE';
+const voice = pickBrowserVoice(ttsGender);
+if (voice) utterance.voice = voice;
+utterance.onstart = () => setIsTtsPlaying(true);
+utterance.onend = () => setIsTtsPlaying(false);
+utterance.onerror = () => setIsTtsPlaying(false);
+window.speechSynthesis.speak(utterance);
+}, [ttsGender, pickBrowserVoice]);
+// Stoppt Wiedergabe unabhängig davon, welche der beiden Engines gerade läuft.
+const stopSpeaking = useCallback(() => {
+audioRef.current?.pause();
+if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
+setIsTtsPlaying(false);
+}, []);
 const speakText = useCallback(async (text) => {
+// Nicht angemeldete Nutzer bekommen immer Browser-TTS — kein Versuch,
+// keine Wartezeit, kein Server-Call für Premium-Audio.
+if (!isGoogleUser) {
+speakWithBrowserTts(text);
+return;
+}
 const cacheKey = `${ttsMode}:${ttsGender}`;
 const cached = ttsAudioCacheRef.current[cacheKey];
 if (cached) {
@@ -573,19 +638,22 @@ const urls = await fetchTtsAudio(text);
 ttsAudioCacheRef.current[cacheKey] = urls;
 playAudioQueue(urls);
 } catch (e) {
-console.error('API-Fehler (TTS-Synthese):', e);
-if (e.cause === 403) {
-// Erwartete Ablehnung (Konto nicht autorisiert) — kein echter Fehler, daher kein Error-Report.
-setError('Sprachausgabe ist nur für ein autorisiertes Konto verfügbar.');
-} else {
+// Premium-TTS fehlgeschlagen (Kontingent erreicht, Rate-Limit, Server-
+// Fehler, ...) — ohne Fehlermeldung auf die Browser-Stimme umschalten,
+// damit immer Audio verfügbar ist.
+console.warn('Premium-TTS nicht verfügbar, Fallback auf Browser-Stimme:', e);
+// Kontingent voll (code "quota_exceeded") oder IP-Rate-Limit (429) sind
+// erwartete Fälle, kein Bug — nur unerwartete Fehler landen im Admin-
+// Fehlerreport (gleiches Muster wie die bisherige 403-Sonderbehandlung).
+if (e.cause !== 429) {
 queueErrorReport('google-tts-api', e);
 flushErrorReports(db, userId, appId);
-setError('Sprachausgabe fehlgeschlagen. Bitte erneut versuchen.');
 }
+speakWithBrowserTts(text);
 } finally {
 setIsTtsLoading(false);
 }
-}, [ttsMode, ttsGender, fetchTtsAudio, playAudioQueue, db, userId]);
+}, [isGoogleUser, ttsMode, ttsGender, fetchTtsAudio, playAudioQueue, speakWithBrowserTts, db, userId]);
 // Erstellt bei Bedarf eine KI-Kurzfassung der Diagnose (nur die wichtigsten
 // Punkte) und liest sie vor; das Ergebnis wird für den aktuellen Diagnosetext
 // zwischengespeichert, damit nicht bei jedem Abspielen erneut angefragt wird.
@@ -625,8 +693,7 @@ setIsGeneratingTtsShort(false);
 }, [solutionText, speakText, db, userId]);
 const handleToggleTts = useCallback(() => {
 if (isTtsPlaying) {
-audioRef.current?.pause();
-setIsTtsPlaying(false);
+stopSpeaking();
 return;
 }
 if (!solutionText || isGeneratingTtsShort || isTtsLoading) return;
@@ -639,7 +706,7 @@ callGeminiTtsSummaryAPI();
 } else {
 speakText(solutionText);
 }
-}, [isTtsPlaying, solutionText, isGeneratingTtsShort, isTtsLoading, ttsMode, ttsShortText, speakText, callGeminiTtsSummaryAPI]);
+}, [isTtsPlaying, solutionText, isGeneratingTtsShort, isTtsLoading, ttsMode, ttsShortText, speakText, callGeminiTtsSummaryAPI, stopSpeaking]);
 // Liest den X-Demo-Remaining-Header aus einer /api/gemini-Antwort (siehe
 // api/gemini.js) und hält den Live-Zähler im Banner aktuell. Fehlt der
 // Header (z.B. Tracking serverseitig aus), bleibt der bisherige Stand.
@@ -796,6 +863,7 @@ setIsStartingFreshSession(false);
 // --- FUNKTION: ALLES ZURÜCKSETZEN ---
 const handleReset = useCallback(() => {
 audioRef.current?.pause();
+if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
 setIsTtsPlaying(false);
 setSelectedImageBase64(null);
 setProblemDescription('');
@@ -1486,7 +1554,9 @@ Männlich
 </div>
 </div>
 <p className="text-xs text-gray-500">
-Stimme: Google Cloud TTS (WaveNet, {ttsGender === 'male' ? 'männlich' : 'weiblich'})
+Stimme: {isGoogleUser ? 'Premium (Google Cloud TTS, WaveNet)' : 'Browser-Sprachausgabe'}
+{' '}({ttsGender === 'male' ? 'männlich' : 'weiblich'})
+{isGoogleUser && ' — bei ausgeschöpftem Kontingent automatischer Wechsel zur Browser-Stimme'}
 </p>
 </div>
 {/* 2. Neue LLM-Funktionen (bleiben als 2x2 Grid) */}
@@ -1679,7 +1749,6 @@ const [googleSignInError, setGoogleSignInError] = useState(null);
 // irgendeinem Grund nicht lädt (Hotlink-Schutz, CSP, Netzwerk) — sonst bliebe
 // ein kaputtes Bild-Icon stehen statt eines brauchbaren Platzhalters.
 const [googlePhotoFailed, setGooglePhotoFailed] = useState(false);
-const isGoogleUser = authUser?.isAnonymous === false;
 const showGooglePhoto = !!authUser?.photoURL && !googlePhotoFailed;
 useEffect(() => { setGooglePhotoFailed(false); }, [authUser?.photoURL]);
 // Menschenlesbare Meldung je bekanntem Firebase-Auth-Fehlercode. Ohne das

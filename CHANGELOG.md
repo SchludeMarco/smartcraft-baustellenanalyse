@@ -8,6 +8,35 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.27.0] – 2026-08-16
+
+### Geändert
+- **Premium-TTS: Tageskontingent für alle Google-Nutzer statt Einzelkonto,
+  garantierter Browser-Fallback statt Fehlermeldung.** Bisher war die
+  Premium-Sprachausgabe (Google Cloud TTS, WaveNet) über `ALLOWED_TTS_EMAIL`
+  serverseitig auf genau ein Google-Konto beschränkt — jeder andere Nutzer,
+  auch angemeldet, bekam nur `403 Forbidden` und keinen Ton. Eine
+  browserseitige Fallback-Stimme existierte im Code nicht mehr (früher wegen
+  Unzuverlässigkeit entfernt).
+  - `api/tts.js` prüft jetzt nur noch, ob das mitgeschickte Firebase-ID-Token
+    zu einem echten (nicht-anonymen), e-mail-verifizierten Google-Login
+    gehört (`firebase.sign_in_provider !== 'anonymous'`) — jeder angemeldete
+    Nutzer qualifiziert sich strukturell. Als Kostenschutz kommt stattdessen
+    ein serverseitiges Tageskontingent pro Nutzer (`PREMIUM_TTS_DAILY_MAX =
+    15`, `shared/ttsQuota.js`), durchgesetzt per Firestore-Transaktion auf
+    `_ttsPremiumQuota/{uid}` (uid aus dem verifizierten Token, nicht vom
+    Client). Bei Überschreitung: `429` mit `code: 'quota_exceeded'`.
+  - `src/App.jsx`: Nicht angemeldete Nutzer bekommen jetzt direkt die
+    browsereigene Web-Speech-API (`speakWithBrowserTts`, per
+    `pickBrowserVoice` mit deutscher, geschlechtspassender Stimme) statt
+    überhaupt gegen `/api/tts` zu laufen. Angemeldete Nutzer versuchen
+    weiterhin zuerst Premium-TTS; schlägt das aus irgendeinem Grund fehl
+    (Kontingent voll, Rate-Limit, Server-Fehler, Netzwerkfehler), schaltet
+    `speakText()` automatisch und ohne nutzersichtbare Fehlermeldung auf die
+    Browser-Stimme um — es gibt jetzt keine Sackgasse ohne Audio mehr.
+    Erwartete Ablehnungen (Kontingent/Rate-Limit) lösen keinen
+    Admin-Fehlerreport mehr aus, unerwartete Fehler weiterhin schon.
+
 ## [1.26.6] – 2026-08-15
 
 ### Hinzugefügt

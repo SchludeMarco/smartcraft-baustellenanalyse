@@ -2,12 +2,14 @@ import crypto from 'crypto';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAppCheck } from 'firebase-admin/app-check';
 import { getFirestore } from 'firebase-admin/firestore';
+import { PREMIUM_TTS_DAILY_MAX } from '../shared/ttsQuota.js';
 
-// Vorlesen ist bewusst auf ein einziges Konto beschränkt (Kostenschutz, siehe
-// CHANGELOG) — nur mit diesem Google-Konto angemeldete Nutzer bekommen Audio.
-// Bewusst als Env-Var statt Klartext im (öffentlichen) Repo, siehe README.
-// Fehlt die Var, schlägt der E-Mail-Vergleich unten immer fehl (fail-closed).
-const ALLOWED_TTS_EMAIL = process.env.ALLOWED_TTS_EMAIL;
+// Premium-Vorlesen (Google Cloud TTS) ist allen angemeldeten Google-Nutzern
+// zugänglich (Kostenschutz kommt über das Tageskontingent unten, nicht mehr
+// über ein einzelnes erlaubtes Konto). Nicht angemeldete/anonyme Nutzer
+// bekommen serverseitig weiterhin kein Premium-Audio — sie laufen im Client
+// gar nicht erst gegen diesen Endpoint, sondern gegen die browsereigene
+// Web Speech API (siehe src/App.jsx).
 
 // Google-Zertifikate zur ID-Token-Prüfung: öffentlicher, unauthentifizierter
 // Endpunkt — dafür ist kein FIREBASE_SERVICE_ACCOUNT_KEY nötig (das Prüfen
@@ -145,6 +147,29 @@ async function checkRateLimit(app, ip) {
   });
 }
 
+// Tages-Kontingent pro Nutzer (uid aus dem verifizierten ID-Token, nicht vom
+// Client) — eigene Collection, getrennt von der IP-basierten Missbrauchs-
+// bremse oben: Die hier zählt, wie viel Premium-Audio ein einzelnes Google-
+// Konto pro Tag "verdient" hat, unabhängig davon, von welcher IP es kommt.
+async function checkPremiumQuota(app, uid) {
+  const db = getFirestore(app);
+  const ref = db.collection('_ttsPremiumQuota').doc(uid);
+  const now = Date.now();
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const data = snap.exists ? snap.data() : {};
+    let { dayStart = 0, dayCount = 0 } = data;
+    if (now - dayStart > RATE_LIMIT_DAY_MS) {
+      dayStart = now;
+      dayCount = 0;
+    }
+    dayCount += 1;
+    const allowed = dayCount <= PREMIUM_TTS_DAILY_MAX;
+    tx.set(ref, { dayStart, dayCount }, { merge: true });
+    return { allowed, remaining: Math.max(0, PREMIUM_TTS_DAILY_MAX - dayCount) };
+  });
+}
+
 // Zerlegt Text an Satzenden in Häppchen unter TTS_CHUNK_MAX_BYTES, damit auch
 // lange Diagnosetexte (> 5000 Byte) als mehrere Anfragen an Google Cloud gehen.
 function chunkText(text) {
@@ -182,15 +207,18 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Vorlesen ist auf ALLOWED_TTS_EMAIL beschränkt — Nachweis über das mit dem
-  // Request mitgeschickte Firebase-ID-Token (Authorization: Bearer <token>),
-  // nicht über eine vom Client behauptete E-Mail-Adresse.
+  // Premium-Vorlesen erfordert ein echtes (nicht-anonymes) Google-Konto —
+  // Nachweis über das mit dem Request mitgeschickte Firebase-ID-Token
+  // (Authorization: Bearer <token>), nicht über eine vom Client behauptete
+  // E-Mail-Adresse. `firebase.sign_in_provider` ist ein Standard-Claim in
+  // jedem Firebase-ID-Token und unterscheidet zuverlässig anonyme Sessions
+  // (Provider "anonymous") von echten Logins.
   const authHeader = req.headers.authorization || '';
   const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
   const projectId = process.env.VITE_FIREBASE_PROJECT_ID;
   const decoded = await verifyFirebaseIdToken(idToken, projectId).catch(() => null);
-  if (!decoded || decoded.email !== ALLOWED_TTS_EMAIL || decoded.email_verified !== true) {
-    res.status(403).json({ error: 'Forbidden: Sprachausgabe ist nur für ein autorisiertes Konto verfügbar' });
+  if (!decoded || decoded.email_verified !== true || decoded.firebase?.sign_in_provider === 'anonymous') {
+    res.status(403).json({ error: 'Forbidden: Premium-Sprachausgabe erfordert eine Anmeldung' });
     return;
   }
 
@@ -207,8 +235,14 @@ export default async function handler(req, res) {
       res.status(429).json({ error: 'Too many requests' });
       return;
     }
+    const { allowed: withinQuota, remaining } = await checkPremiumQuota(app, decoded.sub);
+    res.setHeader('X-Tts-Premium-Remaining', String(remaining));
+    if (!withinQuota) {
+      res.status(429).json({ error: 'Premium-Kontingent erreicht', code: 'quota_exceeded' });
+      return;
+    }
   } else {
-    console.warn('FIREBASE_SERVICE_ACCOUNT_KEY nicht gesetzt — App Check/Rate-Limiting deaktiviert.');
+    console.warn('FIREBASE_SERVICE_ACCOUNT_KEY nicht gesetzt — App Check/Rate-Limiting/Kontingent deaktiviert.');
   }
 
   const apiKey = process.env.GOOGLE_TTS_API_KEY;
