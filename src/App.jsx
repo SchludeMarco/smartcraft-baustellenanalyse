@@ -251,9 +251,9 @@ const TradeButton = ({ name, icon: Icon, theme, isSelected, onClick }) => (
 <button
 onClick={() => onClick(name)}
 style={{ '--tbtn-bg': theme.accent, '--tbtn-bg-hover': theme.accentDark }}
-className={`flex flex-col items-center justify-center p-2 rounded-xl transition-colors duration-500 ease-in-out shadow-lg transform active:scale-[0.98]
+className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-colors duration-500 ease-in-out shadow-lg transform active:scale-[0.98] border-2
 bg-(--tbtn-bg) hover:bg-(--tbtn-bg-hover) text-white
-${isSelected ? 'ring-4 ring-offset-2 ring-(--tbtn-bg) shadow-2xl' : 'opacity-90 hover:opacity-100'}
+${isSelected ? 'border-gold ring-2 ring-offset-2 ring-offset-parchment ring-gold shadow-2xl' : 'border-black/10 opacity-90 hover:opacity-100'}
 `}
 >
 <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-white/30 mb-1">
@@ -1758,7 +1758,7 @@ Als PDF exportieren
 // Standard-Willkommensmeldung
 return (
 // Akzent (Rahmen & Icon) folgt dem gewählten Beruf
-<div className="p-8 text-center text-gray-500 bg-white rounded-xl shadow-inner border-4 border-dashed border-(--accent-soft) transition-colors duration-700 ease-in-out">
+<div className="p-8 text-center text-gray-500 panel-parchment rounded-xl border-dashed border-4 border-(--accent-soft) transition-colors duration-700 ease-in-out">
 <Smartphone className="w-8 h-8 mx-auto text-(--accent) mb-3 transition-colors duration-700 ease-in-out" />
 <p className="font-semibold text-lg text-gray-800">Starten Sie Ihre Bauanalyse</p>
 <p className="text-sm mt-2 text-gray-600 font-bold">
@@ -2050,7 +2050,7 @@ backgroundImage: "url(https://storage.googleapis.com/bacon-images-prod/gemini/ap
 '--accent-soft': theme.accentSoft,
 }}
 >
-<div className="absolute inset-0 bg-black/40 z-0"></div>
+<div className="absolute inset-0 bg-gradient-to-b from-black/50 via-[#3a2414]/60 to-black/70 z-0"></div>
 <div className="w-full max-w-sm flex flex-col items-center relative z-10">
 {/* Historie-Modal */}
 {showHistory && (
@@ -2072,21 +2072,21 @@ onClose={() => setShowAdmin(false)}
 />
 )}
 {/* Header mit Profil-Button - Farbe folgt dem gewählten Beruf (weicher Übergang) */}
-<header className="w-full p-5 bg-(--accent) shadow-2xl relative transition-colors duration-700 ease-in-out">
+<header className="w-full p-5 header-ornate relative transition-colors duration-700 ease-in-out">
 <div className="flex items-center justify-between relative z-10">
 <div className="flex items-center space-x-3">
 {/* EINGEBETTETES, STABILES LOGO (Lucide-Icons) */}
 <SmarterCraftLogo onClick={handleReset} />
 {/* Versionsnummer stammt aus package.json (siehe vite.config.js define: __APP_VERSION__) */}
-<h1 className="text-2xl font-extrabold text-white tracking-tight">Sm@rtCraft! <span className='text-sm font-light italic'>(V{__APP_VERSION__})</span></h1>
+<h1 className="text-2xl font-display font-bold text-gold-light tracking-wide" style={{ color: 'var(--color-gold-light)' }}>Sm@rt<span style={{ color: '#fff' }}>Craft</span>! <span className='text-xs font-sans font-light italic text-white/70'>(V{__APP_VERSION__})</span></h1>
 </div>
 {/* Profil-Button: Öffnet das Profil-Modal */}
 <UserProfileModal />
 </div>
-<p className="text-sm text-white/90 mt-1 relative z-10">Der Kollege in der Hosentasche.</p>
+<p className="text-sm text-white/80 mt-1 relative z-10 italic">Der Kollege in der Hosentasche.</p>
 </header>
 {/* Haupt-Content-Bereich */}
-<main className="p-4 space-y-6 w-full bg-white/95 backdrop-blur-md shadow-2xl overflow-y-auto">
+<main className="p-4 space-y-6 w-full panel-parchment backdrop-blur-md overflow-y-auto">
 {/* DEMO-KONTINGENT-HINWEIS: informiert vorab über das Limit aus DEMO_LIFETIME_MAX
     (shared/demoLimit.js), statt dass Nutzer erst beim Fehlschlagen der Analyse
     davon erfahren. demoRemaining kommt live vom Server (api/demo-status.js
@@ -2094,7 +2094,7 @@ onClose={() => setShowAdmin(false)}
     updateDemoRemainingFromResponse) — solange es null ist (noch nicht
     geladen bzw. Tracking serverseitig aus), zeigt der Text nur die Obergrenze. */}
 {showDemoNotice && (
-<div className="p-3 bg-blue-50 border-l-4 border-blue-400 text-blue-800 rounded-lg shadow-md flex items-start space-x-3">
+<div className="p-3 bg-blue-50 border-l-4 border-blue-400 text-blue-800 rounded-xl shadow-md flex items-start space-x-3">
 <Info className="w-5 h-5 mt-1 flex-shrink-0 text-blue-500" />
 <div className="flex-grow">
 <p className="font-bold">Kostenlose Vorschau</p>
@@ -2132,8 +2132,8 @@ title="Hinweis ausblenden"
 )}
 {/* 1. Beruf Auswahl */}
 <section>
-<h2 className="text-lg font-bold text-gray-700 mb-3 border-b pb-2">1. Beruf auswählen</h2>
-<div className="grid grid-cols-5 gap-2 p-3 bg-gray-100 rounded-xl border border-gray-200 shadow-inner">
+<h2 className="mb-3"><span className="badge-pill">1. Beruf auswählen</span></h2>
+<div className="grid grid-cols-5 gap-2 p-3 bg-parchment-dark/60 rounded-xl border-2 border-gold/50 shadow-inner">
 {TRADE_ICONS.map((trade) => (
 <TradeButton
 key={trade.name}
@@ -2151,9 +2151,9 @@ onClick={saveTradePreference} // Speichert direkt in Firestore
 </section>
 {/* 2. Problem dokumentieren & analysieren - ANPASSUNG AN BILDSTIL */}
 <section>
-<h2 className="text-lg font-bold text-gray-700 mb-3 border-b pb-2">2. Problem dokumentieren & analysieren</h2>
+<h2 className="mb-3"><span className="badge-pill">2. Problem dokumentieren &amp; analysieren</span></h2>
 {/* NEUE STRUKTUR: Wie auf dem Bild (einheitliche Eingabekarte) */}
-<div className="bg-white p-4 border border-gray-200 rounded-xl shadow-lg">
+<div className="panel-parchment p-4 rounded-xl">
 {/* Mini-Button-Leiste für Foto-Auswahl im Tab-Stil - Jetzt klarer als Dateiauswahl */}
 <div className="flex space-x-4 text-sm font-semibold text-gray-700 mb-4 border-b pb-2 -mt-2">
 {/* Foto direkt mit der Kamera aufnehmen: "capture" öffnet auf dem Handy die
@@ -2214,18 +2214,16 @@ className="w-full p-2 border border-gray-300 rounded-lg focus:ring-orange-500 fo
 {/* Reset Button */}
 <button
 onClick={handleReset}
-className="w-1/3 flex items-center justify-center py-3 rounded-xl font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 transition duration-300 text-sm shadow-md transform active:scale-[0.98]"
+className="w-1/3 flex items-center justify-center py-3 btn-parchment text-sm"
 >
 <RefreshCw className="w-4 h-4 mr-1" />
 Zurücksetzen
 </button>
-{/* Primär Analyse Button - Orange Theme */}
+{/* Primär Analyse Button - Quest-Button im Spiel-Look */}
 <button
 onClick={callGeminiVisionAPI}
 disabled={isAnalyzing || (!selectedImageBase64 && problemDescription.trim().length === 0)}
-className={`w-2/3 flex items-center justify-center py-3 rounded-xl font-bold text-white shadow-lg transition duration-300 transform active:scale-[0.98]
-${isAnalyzing || (!selectedImageBase64 && problemDescription.trim().length === 0) ? 'bg-orange-400 cursor-wait' : 'bg-orange-600 hover:bg-orange-700 active:bg-orange-800'}`
-}
+className="w-2/3 flex items-center justify-center py-3 btn-quest transition duration-300"
 >
 {isAnalyzing ? (
 <>
@@ -2243,7 +2241,7 @@ Problem analysieren
 </section>
 {/* 3. Analyseergebnisse */}
 <section className="mt-6">
-<h2 className="text-lg font-bold text-gray-700 mb-3 border-b pb-2">3. Ergebnis der KI-Analyse</h2>
+<h2 className="mb-3"><span className="badge-pill">3. Ergebnis der KI-Analyse</span></h2>
 {ResultDisplay}
 </section>
 </main>

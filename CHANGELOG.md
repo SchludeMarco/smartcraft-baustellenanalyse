@@ -8,6 +8,27 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.28.0] – 2026-08-16
+
+### Geändert
+- **Neues "Look and Feel" angelehnt an ornamentale Game-UI-Ästhetik**
+  (Vorlage: Tages-Login-Screen eines Mobile-Games mit Pergament-Panels,
+  weinroter Kopfleiste mit Goldsaum und grünen Pillen-Buttons/-Badges).
+  `src/index.css` bekam ein Tailwind-v4-`@theme` mit den neuen Farbtokens
+  `parchment`, `wood`, `gold` und `forest` sowie die Komponentenklassen
+  `panel-parchment`, `header-ornate`, `badge-pill`, `btn-quest` und
+  `btn-parchment`; dazu die Display-Schriftart "Cinzel" (`index.html`).
+  In `src/App.jsx` angewendet auf Kopfleiste, Haupt-Panel,
+  Abschnittsüberschriften (jetzt grüne Pillen statt schlichter
+  `<h2>`-Unterstrichen), die Berufs-Auswahl-Kachel, die
+  Problem-Dokumentations-Karte, den Analyse-/Zurücksetzen-Button-Bereich
+  sowie den Leer-Zustand des Analyseergebnisses. Bewusst unverändert
+  gelassen: die pro Beruf unterschiedlichen Akzentfarben aus
+  `TRADE_THEMES` (bleiben funktional bedeutsam) sowie die
+  Sicherheits-Hinweisbanner (Demo-Kontingent, EU-AI-Act-Haftungsausschluss)
+  — deren neutrale Blau-/Rot-Warnfarben sollen nicht durch ein
+  Spiel-Design-Motiv verwässert werden.
+
 ## [1.27.4] – 2026-08-16
 
 ### Behoben
