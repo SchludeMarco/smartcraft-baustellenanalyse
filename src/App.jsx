@@ -162,9 +162,16 @@ setTimeout(() => ctx.close(), 700);
 }
 };
 /**
-* Funktion mit Exponential Backoff für API-Anrufe, um Throttling zu behandeln
+* Funktion mit Exponential Backoff für API-Anrufe, um Throttling zu behandeln.
+* maxRetries=5 mit auf 8s gedeckeltem Backoff (Summe ~15s Wartezeit vor dem
+* letzten Versuch): Gemini liefert bei Überlastung ("model is currently
+* experiencing high demand") ein 5xx, das sich in der Praxis nach wenigen
+* Sekunden bis niedrigen zehner Sekunden von selbst löst — ein manueller
+* Retry durch den Nutzer war bereits erfolgreich, das soll jetzt automatisch
+* passieren statt sofort einen Fehler anzuzeigen.
 */
-const fetchWithRetry = async (url, options, maxRetries = 3) => {
+const MAX_RETRY_DELAY_MS = 8000;
+const fetchWithRetry = async (url, options, maxRetries = 5) => {
 let requestOptions = options;
 if ((url === apiUrl || url === demoStatusUrl || url === apiTtsUrl) && appCheckInstance) {
 try {
@@ -202,7 +209,7 @@ const response = await fetch(url, requestOptions);
 // Response bei 429/4xx wird direkt zurückgegeben, damit der Aufrufer die
 // Klartext-Fehlermeldung aus dem Response-Body lesen kann.
 if (!response.ok && response.status >= 500 && i < maxRetries - 1) {
-const delay = Math.pow(2, i) * 1000;
+const delay = Math.min(Math.pow(2, i) * 1000, MAX_RETRY_DELAY_MS);
 await new Promise(resolve => setTimeout(resolve, delay));
 continue;
 }
@@ -212,8 +219,8 @@ return response;
 if (i === maxRetries - 1) {
 throw error;
 }
-// Exponentieller Backoff
-const delay = Math.pow(2, i) * 1000;
+// Exponentieller Backoff, gedeckelt auf MAX_RETRY_DELAY_MS
+const delay = Math.min(Math.pow(2, i) * 1000, MAX_RETRY_DELAY_MS);
 await new Promise(resolve => setTimeout(resolve, delay));
 }
 }

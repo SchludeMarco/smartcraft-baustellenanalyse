@@ -8,6 +8,19 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.27.3] – 2026-08-16
+
+### Behoben
+- **Gemini-Überlastungsfehler ("model is currently experiencing high
+  demand") führten zu schnell zu einer Fehlermeldung.** `fetchWithRetry` in
+  `src/App.jsx` wiederholte 5xx-Antworten bisher nur 3× mit Backoff bis
+  max. 4s (Gesamtwartezeit ~3s) — bei einer Google-seitigen Überlastspitze
+  reichte das oft nicht, ein manueller erneuter Klick kurz danach
+  funktionierte dagegen zuverlässig. `maxRetries` auf 5 erhöht und der
+  Backoff auf 8s gedeckelt (Gesamtwartezeit vor dem letzten Versuch jetzt
+  ~15s statt ~3s), sodass sich solche kurzfristigen Überlastungen jetzt
+  automatisch ausretryen, bevor die App einen Fehler anzeigt.
+
 ## [1.27.2] – 2026-08-16
 
 ### Behoben

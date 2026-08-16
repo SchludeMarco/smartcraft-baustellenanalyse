@@ -64,6 +64,25 @@ neu als offener Eintrag dokumentieren.
 
 ## Gelöste Fehler
 
+### 6. Alle `/api/gemini`-Aufrufer: "Fehler bei der Verbindung zur Analyse: ... currently experiencing high demand"
+
+- **Status:** Gelöst (V1.27.3)
+- **Kontext:** Betrifft strukturell alle sechs `/api/gemini`-Aufrufer (u.a.
+  `callGeminiVisionAPI`), die den geteilten `fetchWithRetry`-Helper in
+  `src/App.jsx` nutzen.
+- **Nachricht:** "Fehler bei der Verbindung zur Analyse: ... This model is
+  currently experiencing high demand. Spikes in demand are usually
+  temporary. Please try again later." (16.8.2026, vom Nutzer direkt
+  beobachtet, nicht über den Admin-Bereich gemeldet).
+- **Ursache:** `fetchWithRetry` wiederholte 5xx-Antworten (Google gibt bei
+  Modell-Überlastung ein 5xx zurück) bisher nur 3× mit Backoff bis max. 4s
+  — Gesamtwartezeit vor dem letzten Versuch nur ~3s. Ein manueller erneuter
+  Klick kurz danach funktionierte zuverlässig, da sich die Überlastspitze
+  bei Google in der Zwischenzeit meist schon gelegt hatte.
+- **Lösung:** `maxRetries` in `fetchWithRetry` auf 5 erhöht, Backoff auf 8s
+  gedeckelt (Gesamtwartezeit vor letztem Versuch jetzt ~15s), siehe
+  CHANGELOG `[1.27.3]`.
+
 ### 1. gemini-tts-summary-api: "API error: " (leer)
 
 - **Status:** Gelöst (V1.24.1)
