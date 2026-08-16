@@ -31,7 +31,34 @@ neu als offener Eintrag dokumentieren.
 
 ## Offene Fehler
 
-_Aktuell keine offenen Einträge._
+### 5. gemini-tts-summary-api: "You exceeded your current quota... free_tier_requests, limit: 20"
+
+- **Status:** Offen
+- **Kontext:** `gemini-tts-summary-api` (`callGeminiTtsSummaryAPI` in
+  `src/App.jsx`, ruft `/api/gemini` → Google Generative Language API auf).
+  Strukturell dasselbe Risiko besteht für jeden der anderen fünf
+  `/api/gemini`-Aufrufer (Hauptanalyse, Materialien, Sicherheit,
+  Kundenbericht, Video-Suche), da alle denselben `GEMINI_API_KEY` teilen.
+- **Nachricht:** "You exceeded your current quota... Quota exceeded for
+  metric: generativelanguage.googleapis.com/generate_content_free_tier_requests,
+  limit: 20, model: gemini-3.7-flash" (15.8.2026, 17:30 Uhr, V1.26.6,
+  Android/Chrome Mobile). Dank Fix Nr. 4 (`extractApiErrorMessage`) zeigt der
+  Report erstmals den echten Google-Fehlertext statt "[object Object]".
+- **Vermutliche Ursache:** Der in `GEMINI_API_KEY` hinterlegte Schlüssel hängt
+  an einem Google-Cloud-Projekt **ohne aktiviertes Billing** und läuft damit
+  im kostenlosen Free-Tier von `generativelanguage.googleapis.com`. Dessen
+  Kontingent für das aktuell hinter dem Alias `gemini-flash-latest`
+  (`api/gemini.js`, `MODEL_NAME`) liegende Modell `gemini-3.7-flash` ist mit
+  20 Requests sehr klein — und gilt projektweit über ALLE Nutzer der App
+  gemeinsam, nicht pro Besucher. Der eigene IP-Rate-Limiter in `api/gemini.js`
+  (12/Minute, 200/Tag, siehe `RATE_LIMIT_MAX_PER_WINDOW`/`_DAY`) ist auf diesen
+  Fall wirkungslos: Er bremst nur einzelne IPs, kann aber das global geteilte
+  20er-Kontingent bei mehreren gleichzeitigen Nutzern nicht schützen.
+- **Lösungsansatz (nicht code-seitig behebbar):** Billing für das
+  Google-Cloud-Projekt hinter `GEMINI_API_KEY` in der Google AI Studio /
+  Cloud Console aktivieren — das hebt die Anfrage auf den Pay-as-you-go-Tier
+  mit deutlich höheren Limits. Bis dahin bleibt das Fehlerbild bei mehreren
+  gleichzeitigen Nutzern reproduzierbar.
 
 ---
 
