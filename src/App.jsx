@@ -1881,9 +1881,11 @@ return (
 <>
 {/* Profil-Button im Header — feste Kreisgröße (w-10 h-10), damit ein Google-Foto
     randlos bis zum Rand füllt statt in einem gepolsterten Button zu "schweben" */}
+<div className="relative flex flex-col items-center">
+<span className="text-[10px] uppercase tracking-wide text-white/70 mb-0.5">PROFIL:</span>
 <button
 onClick={() => setShowProfile(true)} // Öffnet Profil-Modal
-className={`w-10 h-10 flex items-center justify-center rounded-full transition duration-200 overflow-hidden ${userId ? 'bg-white/20 hover:bg-white/30' : 'bg-gray-500/50 cursor-wait'}`}
+className={`w-10 h-10 flex items-center justify-center rounded-full ring-2 ring-white/70 ring-offset-2 ring-offset-transparent transition duration-200 overflow-hidden ${userId ? 'bg-white/20 hover:bg-white/30' : 'bg-gray-500/50 cursor-wait'}`}
 disabled={!userId}
 title="Benutzerprofil und Historie anzeigen"
 >
@@ -1893,6 +1895,7 @@ title="Benutzerprofil und Historie anzeigen"
 <User className="w-6 h-6 text-white" />
 )}
 </button>
+</div>
 {/* Profil Modal */}
 {showProfile && (
 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4" onClick={() => setShowProfile(false)}>
