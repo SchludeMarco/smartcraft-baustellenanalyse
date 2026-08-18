@@ -1,11 +1,14 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Lock, Bug, Mail, X, Loader2, ChevronDown, ChevronUp, RefreshCw, CheckCircle2, RotateCcw, MapPin } from 'lucide-react';
+import { Lock, Bug, Mail, X, Loader2, ChevronDown, ChevronUp, RefreshCw, CheckCircle2, RotateCcw, MapPin, Eye, Trash2 } from 'lucide-react';
 import {
   fetchAllErrorReports,
   fetchResolvedContexts,
   setContextResolved,
   getErrorContextInfo,
   fetchAppStarts,
+  fetchAppStartsReviewedAt,
+  markAppStartsReviewed,
+  deleteAllAppStarts,
 } from './errorReporting';
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
@@ -53,12 +56,15 @@ const AdminPanel = ({ db, appId, isAdmin, onClose }) => {
   const [reports, setReports] = useState([]);
   const [resolvedContexts, setResolvedContexts] = useState({});
   const [appStarts, setAppStarts] = useState([]);
+  const [appStartsReviewedAt, setAppStartsReviewedAt] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
   const [hideResolved, setHideResolved] = useState(true);
   const [hideOld, setHideOld] = useState(true);
   const [togglingContext, setTogglingContext] = useState(null);
+  const [isReviewingStarts, setIsReviewingStarts] = useState(false);
+  const [isDeletingStarts, setIsDeletingStarts] = useState(false);
 
   const loadReports = useCallback(async () => {
     if (!db) {
@@ -68,14 +74,16 @@ const AdminPanel = ({ db, appId, isAdmin, onClose }) => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const [data, resolved, starts] = await Promise.all([
+      const [data, resolved, starts, reviewedAt] = await Promise.all([
         fetchAllErrorReports(db),
         fetchResolvedContexts(db, appId),
         fetchAppStarts(db, appId),
+        fetchAppStartsReviewedAt(db, appId),
       ]);
       setReports(data);
       setResolvedContexts(resolved);
       setAppStarts(starts);
+      setAppStartsReviewedAt(reviewedAt);
     } catch (e) {
       console.error('Fehler beim Laden der Fehlerreports:', e);
       setLoadError('Fehler beim Laden: ' + e.message);
@@ -83,6 +91,31 @@ const AdminPanel = ({ db, appId, isAdmin, onClose }) => {
       setIsLoading(false);
     }
   }, [db, appId]);
+
+  const handleReviewStarts = async () => {
+    setIsReviewingStarts(true);
+    try {
+      const reviewedAt = await markAppStartsReviewed(db, appId);
+      setAppStartsReviewedAt(reviewedAt);
+    } catch (e) {
+      console.error('Als gelesen markieren fehlgeschlagen:', e);
+    } finally {
+      setIsReviewingStarts(false);
+    }
+  };
+
+  const handleDeleteAllStarts = async () => {
+    if (!window.confirm(`Wirklich alle ${appStarts.length} App-Start-Log-Einträge unwiderruflich löschen?`)) return;
+    setIsDeletingStarts(true);
+    try {
+      await deleteAllAppStarts(db, appId);
+      setAppStarts([]);
+    } catch (e) {
+      console.error('Löschen des App-Start-Logs fehlgeschlagen:', e);
+    } finally {
+      setIsDeletingStarts(false);
+    }
+  };
 
   const toggleResolved = async (context, resolved) => {
     setTogglingContext(context);
@@ -137,16 +170,40 @@ const AdminPanel = ({ db, appId, isAdmin, onClose }) => {
               </button>
             </div>
             {appStarts.length > 0 && (
-              <div className="mb-3 flex-shrink-0 border border-gray-200 rounded-lg p-2 bg-gray-50 max-h-28 overflow-y-auto">
-                <p className="text-xs font-semibold text-gray-600 mb-1 flex items-center">
-                  <MapPin className="w-3 h-3 mr-1" /> Letzte {appStarts.length} App-Starts (grobe Region)
-                </p>
-                <ul className="space-y-0.5">
+              <div className="mb-3 flex-shrink-0 border border-gray-200 rounded-lg p-2 bg-gray-50">
+                <div className="flex items-center justify-between mb-1 gap-2">
+                  <p className="text-xs font-semibold text-gray-600 flex items-center">
+                    <MapPin className="w-3 h-3 mr-1" /> Letzte {appStarts.length} App-Starts (grobe Region)
+                  </p>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={handleReviewStarts}
+                      disabled={isReviewingStarts}
+                      title="Alle als gelesen markieren"
+                      className="text-gray-400 hover:text-blue-600 disabled:opacity-50"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={handleDeleteAllStarts}
+                      disabled={isDeletingStarts}
+                      title="Alle löschen"
+                      className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <ul className="space-y-0.5 max-h-24 overflow-y-auto">
                   {appStarts.map((entry) => {
                     const location = [entry.city, entry.country].filter((v) => v && v !== 'Unbekannt').join(', ') || 'Unbekannt';
+                    const isNew = entry.timestamp > appStartsReviewedAt;
                     return (
                       <li key={entry.id} className="text-[11px] text-gray-600 flex justify-between gap-2">
-                        <span>{formatTimestamp(entry.timestamp)}</span>
+                        <span className="flex items-center gap-1">
+                          {isNew && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" title="Neu seit letztem Lesen" />}
+                          {formatTimestamp(entry.timestamp)}
+                        </span>
                         <span className="text-right">
                           {location}
                           {entry.visitorId && (

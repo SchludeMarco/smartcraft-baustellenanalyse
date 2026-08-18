@@ -1,4 +1,4 @@
-import { collection, collectionGroup, doc, setDoc, getDoc, getDocs, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
+import { collection, collectionGroup, doc, setDoc, getDoc, getDocs, query, orderBy, limit, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { getToken as getAppCheckToken } from 'firebase/app-check';
 import { ERROR_CONTEXT_INFO, getErrorContextInfo } from './errorContextInfo';
 
@@ -179,6 +179,46 @@ export const fetchAppStarts = async (db, appId, max = 300) => {
   const entries = [];
   snapshot.forEach((docSnap) => entries.push({ id: docSnap.id, ...docSnap.data() }));
   return entries;
+};
+
+const APP_STARTS_REVIEW_DOC = (db, appId) => doc(db, 'artifacts', appId, 'adminMeta', 'appStartsReview');
+
+/**
+ * Liest, bis zu welchem Zeitpunkt das App-Start-Log zuletzt als "gelesen"
+ * markiert wurde (siehe markAppStartsReviewed) - Einträge danach zeigt
+ * AdminPanel.jsx mit einem "NEU"-Badge an.
+ */
+export const fetchAppStartsReviewedAt = async (db, appId) => {
+  const snap = await getDoc(APP_STARTS_REVIEW_DOC(db, appId));
+  return snap.exists() ? snap.data().reviewedAt || 0 : 0;
+};
+
+/**
+ * Markiert das App-Start-Log bis jetzt als gelesen (ein einzelner Zeitstempel
+ * für den ganzen Log statt pro Eintrag, siehe Rückmeldung im Admin-Bereich).
+ */
+export const markAppStartsReviewed = async (db, appId) => {
+  const reviewedAt = Date.now();
+  await setDoc(APP_STARTS_REVIEW_DOC(db, appId), { reviewedAt }, { merge: true });
+  return reviewedAt;
+};
+
+/**
+ * Löscht alle App-Start-Log-Einträge unwiderruflich (Aufräum-Button im
+ * Admin-Bereich). Firestore kennt kein atomares "Collection löschen" im
+ * Client-SDK, daher erst lesen, dann in 500er-Batches löschen (Firestore-
+ * Limit pro Batch). Gibt die Anzahl gelöschter Einträge zurück.
+ */
+export const deleteAllAppStarts = async (db, appId) => {
+  const col = collection(db, 'artifacts', appId, 'appStarts');
+  const snapshot = await getDocs(col);
+  const docs = snapshot.docs;
+  for (let i = 0; i < docs.length; i += 500) {
+    const batch = writeBatch(db);
+    docs.slice(i, i + 500).forEach((docSnap) => batch.delete(docSnap.ref));
+    await batch.commit();
+  }
+  return docs.length;
 };
 
 // Re-export für bestehende Importe (z.B. src/AdminPanel.jsx) — Inhalt liegt in

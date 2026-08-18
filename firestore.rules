@@ -28,8 +28,13 @@ service cloud.firestore {
     // desselben Geräts (siehe api/app-start.js) - kein Name/E-Mail. Schreiben
     // erfolgt ausschließlich serverseitig über den Firebase-Admin-SDK (umgeht
     // diese Regel), hier daher nur Lesezugriff für Admins.
+    // "delete" zusätzlich zu "read": Admin-Bereich bietet einen "Alle löschen"-
+    // Button für aufgeräumte Log-Pflege (siehe AdminPanel.jsx). Erzeugt wird
+    // ein Eintrag weiterhin ausschließlich serverseitig über den
+    // Firebase-Admin-SDK (siehe api/app-start.js) - "create"/"update" bleiben
+    // daher bewusst nicht erlaubt.
     match /artifacts/{appId}/appStarts/{document=**} {
-      allow read: if request.auth != null && request.auth.token.admin == true;
+      allow read, delete: if request.auth != null && request.auth.token.admin == true;
     }
   }
 }

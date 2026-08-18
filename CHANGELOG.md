@@ -8,6 +8,21 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.32.0] – 2026-08-18
+
+### Hinzugefügt
+- **"Als gelesen markieren" und "Alle löschen" für das App-Start-Log im
+  Admin-Bereich.** Zwei Icon-Buttons über der App-Starts-Liste in
+  `src/AdminPanel.jsx`: Der Augen-Button merkt sich einen einzelnen
+  Zeitstempel (`artifacts/{appId}/adminMeta/appStartsReview`, wie die
+  bestehenden `adminMeta`-Dokumente per Custom Claim geschützt) statt pro
+  Eintrag — neue Starts seitdem zeigen einen blauen Punkt. Der
+  Papierkorb-Button löscht nach Bestätigung alle App-Start-Log-Einträge in
+  500er-Batches (`deleteAllAppStarts` in `src/errorReporting.js`).
+  `firestore.rules` erlaubt Admin-Konten dafür jetzt zusätzlich `delete` auf
+  `appStarts` (weiterhin kein `create`/`update` — neue Einträge entstehen
+  unverändert nur serverseitig über `api/app-start.js`).
+
 ## [1.31.0] – 2026-08-18
 
 ### Hinzugefügt
