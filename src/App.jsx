@@ -3,7 +3,7 @@ import {
 Camera, Image, Upload, Wrench, Loader2, Zap, AlertTriangle, CheckCircle,
 Smartphone, FileText, Pipette, Paintbrush, Flower, Hammer, BrickWall, Home,
 Settings, MoreHorizontal, User, Package, Shield, Video, RefreshCw,
-Volume2, VolumeX, List, X, Lock, Info
+Volume2, VolumeX, List, X, Lock, Info, MessageSquarePlus
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import {
@@ -2296,14 +2296,7 @@ Problem analysieren
 {ResultDisplay}
 </section>
 </main>
-<footer className="w-full text-center py-3 relative z-10 space-x-3">
-<button
-onClick={() => setShowFeedback(true)}
-className="text-[11px] text-white/60 hover:text-white/90 underline"
->
-Feedback senden
-</button>
-<span className="text-[11px] text-white/30">·</span>
+<footer className="w-full text-center py-3 relative z-10">
 <button
 onClick={() => setShowLegal(true)}
 className="text-[11px] text-white/60 hover:text-white/90 underline"
@@ -2311,6 +2304,16 @@ className="text-[11px] text-white/60 hover:text-white/90 underline"
 Impressum &amp; Datenschutz
 </button>
 </footer>
+{/* Feedback-Button: freischwebend statt im Footer, damit er nicht neben
+    "Impressum & Datenschutz" untergeht (siehe Nutzer-Feedback) */}
+<button
+onClick={() => setShowFeedback(true)}
+className="fixed bottom-5 right-5 z-40 flex items-center gap-2 px-5 py-3.5 btn-gold"
+aria-label="Feedback senden"
+>
+<MessageSquarePlus className="w-5 h-5" />
+<span className="font-semibold text-sm">Feedback</span>
+</button>
 </div>
 </div>
 );

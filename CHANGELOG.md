@@ -8,6 +8,17 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.33.1] – 2026-08-18
+
+### Geändert
+- **Feedback-Button auffälliger platziert.** Der in V1.33.0 eingeführte
+  Button ging als unscheinbarer Text-Link neben "Impressum & Datenschutz"
+  im Footer unter. Jetzt ein freischwebender, goldener Pill-Button
+  (`.btn-gold`, neu in `src/index.css`) unten rechts, immer sichtbar
+  unabhängig vom Scroll-Stand — bewusst Gold statt des grünen `btn-quest`,
+  damit er nicht mit dem primären "Problem analysieren"-CTA verwechselt
+  wird.
+
 ## [1.33.0] – 2026-08-18
 
 ### Hinzugefügt
