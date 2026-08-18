@@ -21,6 +21,7 @@ import { firebaseConfig } from './firebaseConfig';
 import { queueErrorReport, flushErrorReports, setErrorReportingAppCheck } from './errorReporting';
 import AdminPanel from './AdminPanel';
 import LegalPanel from './LegalPanel';
+import FeedbackModal from './FeedbackModal';
 import { DEMO_LIFETIME_MAX } from '../shared/demoLimit.js';
 import { APP_ID as appId } from '../shared/appId.js';
 
@@ -435,6 +436,7 @@ const [isStartingFreshSession, setIsStartingFreshSession] = useState(false);
 const [showHistory, setShowHistory] = useState(false); // Steuert das Historien-Modal
 const [showAdmin, setShowAdmin] = useState(false); // Steuert das Admin-Modal (Fehlerreports)
 const [showLegal, setShowLegal] = useState(false); // Steuert das Impressum/Datenschutz-Modal
+const [showFeedback, setShowFeedback] = useState(false); // Steuert das Feedback-Modal
 // Echter Admin-Status (Firebase Custom Claim "admin: true", siehe
 // scripts/set-admin-claim.mjs + api/gemini.js), kein UI-Sichtschutz mehr —
 // AdminPanel.jsx verlässt sich hierauf statt auf einen PIN.
@@ -2109,6 +2111,17 @@ onClose={() => setShowAdmin(false)}
 )}
 {/* Impressum/Datenschutz-Modal */}
 {showLegal && <LegalPanel onClose={() => setShowLegal(false)} />}
+{/* Feedback-Modal */}
+{showFeedback && (
+<FeedbackModal
+onClose={() => setShowFeedback(false)}
+reporterInfo={{
+displayName: authUser?.displayName || null,
+email: authUser?.email || null,
+isAnonymous: authUser?.isAnonymous ?? true,
+}}
+/>
+)}
 {/* Header mit Profil-Button - Farbe folgt dem gewählten Beruf (weicher Übergang) */}
 <header className="w-full p-5 header-ornate relative transition-colors duration-700 ease-in-out">
 <div className="flex items-center justify-between relative z-10">
@@ -2283,7 +2296,14 @@ Problem analysieren
 {ResultDisplay}
 </section>
 </main>
-<footer className="w-full text-center py-3 relative z-10">
+<footer className="w-full text-center py-3 relative z-10 space-x-3">
+<button
+onClick={() => setShowFeedback(true)}
+className="text-[11px] text-white/60 hover:text-white/90 underline"
+>
+Feedback senden
+</button>
+<span className="text-[11px] text-white/30">·</span>
 <button
 onClick={() => setShowLegal(true)}
 className="text-[11px] text-white/60 hover:text-white/90 underline"

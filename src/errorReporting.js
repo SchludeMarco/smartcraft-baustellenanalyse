@@ -38,6 +38,39 @@ export const sendBugReportEmail = async (report) => {
   }
 };
 
+/**
+ * Schickt vom Nutzer aktiv verfasstes Feedback (Feedback-Button in App.jsx)
+ * per Mail an den Support (siehe api/send-feedback.js). Anders als
+ * queueErrorReport() kein Fire-and-forget mit lokaler Warteschlange: der
+ * Nutzer klickt bewusst "Senden" und soll direkt einen Erfolg/Fehler-Status
+ * sehen, daher wird der Erfolg hier zurückgegeben statt nur versucht.
+ */
+export const sendFeedback = async (message, reporterInfo = null) => {
+  let headers = { 'Content-Type': 'application/json' };
+  if (appCheckInstanceRef) {
+    try {
+      const { token } = await getAppCheckToken(appCheckInstanceRef);
+      headers['X-Firebase-AppCheck'] = token;
+    } catch {
+      // Ohne Token läuft die Anfrage weiter, siehe sendBugReportEmail oben.
+    }
+  }
+  const response = await fetch('/api/send-feedback', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      message,
+      reporterInfo,
+      appVersion: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : null,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+      timestamp: Date.now(),
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Feedback-Versand fehlgeschlagen (${response.status})`);
+  }
+};
+
 const readQueue = () => {
   try {
     const raw = localStorage.getItem(QUEUE_KEY);

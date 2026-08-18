@@ -8,6 +8,23 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.33.0] – 2026-08-18
+
+### Hinzugefügt
+- **"Feedback senden"-Button direkt in der App.** Neuer Footer-Button neben
+  "Impressum & Datenschutz" öffnet `src/FeedbackModal.jsx` (Textarea, max.
+  2000 Zeichen) und schickt die Nachricht über die neue, serverseitige
+  `api/send-feedback.js` per Mail an den Support — gleiches Schutzmuster
+  (Same-Origin-Check, Firebase App Check, IP-Rate-Limit, Resend) wie
+  `api/report-bug.js`, aber eigener Rate-Limit-Zähler und ohne
+  Firestore-Speicherung oder Dedup, da jede Nachricht ein bewusster,
+  eigenständiger Nutzer-Klick ist. Client-seitig teilt sich
+  `sendFeedback()` (`src/errorReporting.js`) den bestehenden
+  App-Check-Instanz-Verweis mit `sendBugReportEmail()`. Bei Anmeldung per
+  Google-Konto wird die Nachricht zusätzlich mit Name/E-Mail versehen.
+  Datenschutzerklärung (`src/LegalPanel.jsx`) um einen entsprechenden
+  Abschnitt ergänzt.
+
 ## [1.32.0] – 2026-08-18
 
 ### Hinzugefügt

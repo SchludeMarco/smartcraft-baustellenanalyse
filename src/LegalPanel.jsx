@@ -175,7 +175,19 @@ const LegalPanel = ({ onClose }) => {
             </p>
           </Section>
 
-          <Section title="8. App-Start-Statistik">
+          <Section title="8. Feedback">
+            <p>
+              Über den Feedback-Button kann freiwillig eine Nachricht an den
+              Verantwortlichen geschickt werden. Sie wird per E-Mail über den
+              Dienst Resend (USA) zugestellt, nicht dauerhaft in Cloud
+              Firestore gespeichert. Bei Anmeldung per Google-Konto wird die
+              Nachricht zusätzlich mit Name/E-Mail des Kontos versehen, damit
+              bei Rückfragen geantwortet werden kann. Rechtsgrundlage:
+              Einwilligung durch aktives Senden (Art. 6 Abs. 1 lit. a DSGVO).
+            </p>
+          </Section>
+
+          <Section title="9. App-Start-Statistik">
             <p>
               Bei jedem App-Start wird ein Eintrag mit Zeitpunkt und grober
               Region (Land/Stadt, ermittelt serverseitig über
@@ -196,21 +208,21 @@ const LegalPanel = ({ onClose }) => {
             </p>
           </Section>
 
-          <Section title="9. Missbrauchs- und Kontingentschutz">
+          <Section title="10. Missbrauchs- und Kontingentschutz">
             <p>
               Um Missbrauch der KI-Funktionen und Massenanfragen zu verhindern,
               wird zu einzelnen Anfragen vorübergehend ein Zähler zur
               IP-Adresse in Cloud Firestore geführt (z. B. Anfragen pro
               Minute/Tag, Gesamtkontingent für nicht angemeldete
-              Demo-Nutzung). Die IP-Adresse selbst wird dabei nur für diesen
-              Zweck verarbeitet, nicht mit den übrigen unter Punkt 4–8
-              genannten Daten verknüpft. Rechtsgrundlage: berechtigtes
-              Interesse an der Abwehr von Missbrauch (Art. 6 Abs. 1 lit. f
-              DSGVO).
+              Demo-Nutzung, Feedback- und Fehlerreport-Versand). Die
+              IP-Adresse selbst wird dabei nur für diesen Zweck verarbeitet,
+              nicht mit den übrigen unter Punkt 4–9 genannten Daten verknüpft.
+              Rechtsgrundlage: berechtigtes Interesse an der Abwehr von
+              Missbrauch (Art. 6 Abs. 1 lit. f DSGVO).
             </p>
           </Section>
 
-          <Section title="10. Bot-/Missbrauchserkennung (Firebase App Check / reCAPTCHA)">
+          <Section title="11. Bot-/Missbrauchserkennung (Firebase App Check / reCAPTCHA)">
             <p>
               Zum Schutz der Server-Schnittstellen vor automatisiertem
               Missbrauch wird Google reCAPTCHA v3 (Firebase App Check)
@@ -222,7 +234,7 @@ const LegalPanel = ({ onClose }) => {
             </p>
           </Section>
 
-          <Section title="11. Lokal gespeicherte Daten (Local Storage)">
+          <Section title="12. Lokal gespeicherte Daten (Local Storage)">
             <p>
               Der Browser speichert lokal auf dem eigenen Gerät u. a. die
               Anmeldesitzung (Firebase Authentication) sowie noch nicht
@@ -233,18 +245,18 @@ const LegalPanel = ({ onClose }) => {
             </p>
           </Section>
 
-          <Section title="12. Empfänger / Auftragsverarbeiter">
+          <Section title="13. Empfänger / Auftragsverarbeiter">
             <p>
               Google Ireland Limited / Google LLC (Firebase Authentication,
               Cloud Firestore, Gemini API, Cloud Text-to-Speech, reCAPTCHA),
               Vercel Inc. (Hosting), Resend (E-Mail-Versand von
-              Fehlerberichten). Mit diesen Anbietern bestehen bzw. gelten
-              deren jeweilige Auftragsverarbeitungs- und
+              Fehlerberichten und Feedback). Mit diesen Anbietern bestehen
+              bzw. gelten deren jeweilige Auftragsverarbeitungs- und
               Standardvertragsklausel-Regelungen.
             </p>
           </Section>
 
-          <Section title="13. Rechte der betroffenen Personen">
+          <Section title="14. Rechte der betroffenen Personen">
             <p>
               Es besteht das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung
               (Art. 16 DSGVO), Löschung (Art. 17 DSGVO), Einschränkung der
@@ -265,7 +277,7 @@ const LegalPanel = ({ onClose }) => {
             </p>
           </Section>
 
-          <Section title="14. Automatisierte Entscheidungsfindung">
+          <Section title="15. Automatisierte Entscheidungsfindung">
             <p>
               Die KI-Analyse ist ein rein unterstützendes Hilfsmittel und
               stellt keine automatisierte Entscheidung mit rechtlicher Wirkung

@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.32.0)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.33.0)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -187,7 +187,11 @@ wird (`api/report-bug.js`), damit ein verbreiteter Fehler nicht das Postfach
 flutet, bevor er überhaupt angesehen werden konnte. Derselbe
 Custom Claim schaltet auch den Admin-Bereich (`src/AdminPanel.jsx`) frei, der sie
 projektweit zusammenfasst — Zugriff wird durch `firestore.rules` durchgesetzt, nicht
-nur durch die App-UI.
+nur durch die App-UI. Über einen "Feedback senden"-Button im Footer kann jeder
+Nutzer freiwillig eine Nachricht direkt an den Entwickler schicken
+(`src/FeedbackModal.jsx` → `api/send-feedback.js`) — per Mail über denselben
+Resend-Dienst wie die Fehlerreports, mit eigenem Rate-Limit, aber ohne
+Firestore-Speicherung.
 
 ## Lokales Setup
 
