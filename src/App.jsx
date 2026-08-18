@@ -20,6 +20,7 @@ orderBy, limit, serverTimestamp
 import { firebaseConfig } from './firebaseConfig';
 import { queueErrorReport, flushErrorReports, setErrorReportingAppCheck } from './errorReporting';
 import AdminPanel from './AdminPanel';
+import LegalPanel from './LegalPanel';
 import { DEMO_LIFETIME_MAX } from '../shared/demoLimit.js';
 import { APP_ID as appId } from '../shared/appId.js';
 
@@ -433,6 +434,7 @@ const [pendingResumeUser, setPendingResumeUser] = useState(null);
 const [isStartingFreshSession, setIsStartingFreshSession] = useState(false);
 const [showHistory, setShowHistory] = useState(false); // Steuert das Historien-Modal
 const [showAdmin, setShowAdmin] = useState(false); // Steuert das Admin-Modal (Fehlerreports)
+const [showLegal, setShowLegal] = useState(false); // Steuert das Impressum/Datenschutz-Modal
 // Echter Admin-Status (Firebase Custom Claim "admin: true", siehe
 // scripts/set-admin-claim.mjs + api/gemini.js), kein UI-Sichtschutz mehr —
 // AdminPanel.jsx verlässt sich hierauf statt auf einen PIN.
@@ -2105,6 +2107,8 @@ isAdmin={isAdmin}
 onClose={() => setShowAdmin(false)}
 />
 )}
+{/* Impressum/Datenschutz-Modal */}
+{showLegal && <LegalPanel onClose={() => setShowLegal(false)} />}
 {/* Header mit Profil-Button - Farbe folgt dem gewählten Beruf (weicher Übergang) */}
 <header className="w-full p-5 header-ornate relative transition-colors duration-700 ease-in-out">
 <div className="flex items-center justify-between relative z-10">
@@ -2279,6 +2283,14 @@ Problem analysieren
 {ResultDisplay}
 </section>
 </main>
+<footer className="w-full text-center py-3 relative z-10">
+<button
+onClick={() => setShowLegal(true)}
+className="text-[11px] text-white/60 hover:text-white/90 underline"
+>
+Impressum &amp; Datenschutz
+</button>
+</footer>
 </div>
 </div>
 );

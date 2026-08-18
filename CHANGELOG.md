@@ -8,6 +8,20 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.31.0] – 2026-08-18
+
+### Hinzugefügt
+- **Impressum & Datenschutzerklärung.** Neue `src/LegalPanel.jsx`, aufrufbar
+  über einen neuen Footer-Link in `src/App.jsx` (kein Router im Projekt,
+  daher als Modal statt eigener Route). Deckt alle tatsächlich verwendeten
+  Datenverarbeitungen ab: Vercel-Hosting, Firebase Authentication (anonym +
+  Google), Firestore-Verlauf, Gemini-API (inkl. optional übermitteltem Foto
+  der Problemstelle — beim ersten Entwurf fälschlich als "nur Text"
+  beschrieben, beim Review anhand von `App.jsx`/`api/gemini.js` korrigiert),
+  Google Cloud TTS, Fehlerreports, das neue App-Start-Log (inkl. `visitorId`),
+  IP-basierter Missbrauchsschutz und App Check/reCAPTCHA. Enthält einen
+  Hinweis, dass es sich um einen Entwurf ohne Rechtsberatung handelt.
+
 ## [1.30.0] – 2026-08-18
 
 ### Hinzugefügt
