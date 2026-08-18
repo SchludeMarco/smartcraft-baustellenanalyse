@@ -1,4 +1,4 @@
-import { collection, collectionGroup, doc, setDoc, getDoc, getDocs, serverTimestamp } from 'firebase/firestore';
+import { collection, collectionGroup, doc, setDoc, getDoc, getDocs, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 import { getToken as getAppCheckToken } from 'firebase/app-check';
 import { ERROR_CONTEXT_INFO, getErrorContextInfo } from './errorContextInfo';
 
@@ -168,17 +168,17 @@ export const setContextResolved = async (db, appId, context, resolved, meta = {}
 };
 
 /**
- * Liest die Tages-Aggregate der App-Start-Zähler (siehe api/app-start.js) für
- * den Admin-Bereich - Tagesgranularität pro grober Region statt eines Logs
- * pro einzelnem Start, damit kein Personenbezug einzelner Aufrufe entsteht.
+ * Liest die zuletzt geloggten App-Starts (siehe api/app-start.js) für den
+ * Admin-Bereich - je Eintrag Zeitstempel + grobe Region, kein Bezug zu einer
+ * Nutzeridentität. `max` begrenzt die Firestore-Query serverseitig, damit ein
+ * einzelner Abruf bei hohem Aufkommen nicht die ganze Collection liest.
  */
-export const fetchAppStartsDaily = async (db, appId, days = 14) => {
-  const col = collection(db, 'artifacts', appId, 'appStartsDaily');
-  const snapshot = await getDocs(col);
+export const fetchAppStarts = async (db, appId, max = 300) => {
+  const col = collection(db, 'artifacts', appId, 'appStarts');
+  const snapshot = await getDocs(query(col, orderBy('timestamp', 'desc'), limit(max)));
   const entries = [];
-  snapshot.forEach((docSnap) => entries.push(docSnap.data()));
-  entries.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  return entries.slice(0, days);
+  snapshot.forEach((docSnap) => entries.push({ id: docSnap.id, ...docSnap.data() }));
+  return entries;
 };
 
 // Re-export für bestehende Importe (z.B. src/AdminPanel.jsx) — Inhalt liegt in

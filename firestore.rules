@@ -23,12 +23,12 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.token.admin == true;
     }
 
-    // Admin-Bereich: Tages-Aggregat der App-Starts nach grober Region (siehe
-    // api/app-start.js) - bewusst nur ein Zähler pro Tag/Region statt eines
-    // Logs pro einzelnem Start, damit kein Personenbezug entsteht. Schreiben
-    // erfolgt ausschließlich serverseitig über den Firebase-Admin-SDK
-    // (umgeht diese Regel), hier daher nur Lesezugriff für Admins.
-    match /artifacts/{appId}/appStartsDaily/{document=**} {
+    // Admin-Bereich: Log der App-Starts mit Zeitstempel + grober Region (siehe
+    // api/app-start.js) - kein Bezug zu einer Nutzeridentität (kein Login/UID
+    // im Dokument). Schreiben erfolgt ausschließlich serverseitig über den
+    // Firebase-Admin-SDK (umgeht diese Regel), hier daher nur Lesezugriff für
+    // Admins.
+    match /artifacts/{appId}/appStarts/{document=**} {
       allow read: if request.auth != null && request.auth.token.admin == true;
     }
   }

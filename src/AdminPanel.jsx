@@ -5,7 +5,7 @@ import {
   fetchResolvedContexts,
   setContextResolved,
   getErrorContextInfo,
-  fetchAppStartsDaily,
+  fetchAppStarts,
 } from './errorReporting';
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
@@ -71,7 +71,7 @@ const AdminPanel = ({ db, appId, isAdmin, onClose }) => {
       const [data, resolved, starts] = await Promise.all([
         fetchAllErrorReports(db),
         fetchResolvedContexts(db, appId),
-        fetchAppStartsDaily(db, appId),
+        fetchAppStarts(db, appId),
       ]);
       setReports(data);
       setResolvedContexts(resolved);
@@ -139,22 +139,15 @@ const AdminPanel = ({ db, appId, isAdmin, onClose }) => {
             {appStarts.length > 0 && (
               <div className="mb-3 flex-shrink-0 border border-gray-200 rounded-lg p-2 bg-gray-50 max-h-28 overflow-y-auto">
                 <p className="text-xs font-semibold text-gray-600 mb-1 flex items-center">
-                  <MapPin className="w-3 h-3 mr-1" /> App-Starts (letzte {appStarts.length} Tage, grobe Region)
+                  <MapPin className="w-3 h-3 mr-1" /> Letzte {appStarts.length} App-Starts (grobe Region)
                 </p>
                 <ul className="space-y-0.5">
                   {appStarts.map((entry) => {
-                    const topLocations = Object.entries(entry.byLocation || {})
-                      .sort((a, b) => b[1] - a[1])
-                      .slice(0, 3)
-                      .map(([loc, count]) => `${loc.replace('_', ' ')}: ${count}`)
-                      .join(', ');
+                    const location = [entry.city, entry.country].filter((v) => v && v !== 'Unbekannt').join(', ') || 'Unbekannt';
                     return (
-                      <li key={entry.date} className="text-[11px] text-gray-600 flex justify-between gap-2">
-                        <span>{entry.date}</span>
-                        <span className="text-right">
-                          {entry.total}
-                          {topLocations ? ` (${topLocations})` : ''}
-                        </span>
+                      <li key={entry.id} className="text-[11px] text-gray-600 flex justify-between gap-2">
+                        <span>{formatTimestamp(entry.timestamp)}</span>
+                        <span className="text-right">{location}</span>
                       </li>
                     );
                   })}

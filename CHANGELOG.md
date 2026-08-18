@@ -8,6 +8,20 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.29.1] – 2026-08-18
+
+### Geändert
+- **App-Start-Log auf einzelne Einträge mit exaktem Zeitstempel umgestellt**
+  (V1.29.0 hatte nur ein Tages-Aggregat pro Region geschrieben — dabei gingen
+  Uhrzeit und die Trennung einzelner Starts verloren, siehe Rückmeldung nach
+  dem ersten Test). `api/app-start.js` legt jetzt pro Start ein Dokument in
+  `artifacts/{appId}/appStarts` an (`timestamp`, `country`, `city`), weiterhin
+  ohne Login/UID und ohne IP-Speicherung. `firestore.rules` und
+  `src/AdminPanel.jsx` (jetzt eine Liste der letzten 300 Starts statt der
+  Tages-Übersicht) entsprechend angepasst. Neuer Hinweis in der README: da die
+  Collection jetzt unbegrenzt wächst, sollte bei nennenswertem Nutzeraufkommen
+  eine Firestore-TTL-Policy auf `timestamp` eingerichtet werden.
+
 ## [1.29.0] – 2026-08-18
 
 ### Hinzugefügt

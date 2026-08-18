@@ -3,12 +3,12 @@ import { getAppCheck } from 'firebase-admin/app-check';
 import { getFirestore } from 'firebase-admin/firestore';
 import { APP_ID } from '../shared/appId.js';
 
-// Zählt App-Starts DSGVO-schonend: statt eines Logs mit Zeitstempel + Standort
-// pro einzelnem Aufruf (das wäre Tracking einzelner Nutzer) wird nur ein
-// Tages-Zähler je grober Region (Land/Stadt aus Vercels Geo-Headern)
-// hochgezählt - die IP selbst wird nirgends gespeichert. So sieht der
-// Admin-Bereich "wie oft/wo wurde die App heute gestartet", ohne dass sich
-// ein einzelner Start einer Person zuordnen lässt.
+// Protokolliert App-Starts für den Admin-Bereich: ein Eintrag pro Start mit
+// Zeitstempel + grober Region (Land/Stadt aus Vercels Geo-Headern) - die IP
+// selbst wird nirgends gespeichert, es gibt keinen Bezug zu einer
+// Nutzeridentität (kein Login/UID nötig, siehe Same-Origin-/App-Check-Schutz
+// unten statt einer Firebase-Auth-Prüfung). Bewusst gröber als GPS: Vercels
+// Header lösen nur bis Stadt-Ebene auf.
 
 // Gleiches Lazy-Init/Fail-open-Muster wie api/gemini.js: ohne Service-Account
 // bleiben App Check/Firestore aus, statt den App-Start selbst zu blockieren.
@@ -138,26 +138,16 @@ export default async function handler(req, res) {
     sanitizeLocationPart(req.headers['x-vercel-ip-city']) ||
     sanitizeLocationPart(req.headers['x-vercel-ip-country-region']) ||
     'Unbekannt';
-  const locationKey = `${country}_${city}`;
-
-  const today = new Date().toISOString().slice(0, 10);
   const db = getFirestore(app);
-  const ref = db.collection('artifacts').doc(APP_ID).collection('appStartsDaily').doc(today);
   try {
-    await db.runTransaction(async (tx) => {
-      const snap = await tx.get(ref);
-      const data = snap.exists ? snap.data() : {};
-      const byLocation = { ...(data.byLocation || {}) };
-      byLocation[locationKey] = (byLocation[locationKey] || 0) + 1;
-      tx.set(
-        ref,
-        { date: today, total: (data.total || 0) + 1, byLocation, updatedAt: Date.now() },
-        { merge: true }
-      );
+    await db.collection('artifacts').doc(APP_ID).collection('appStarts').add({
+      timestamp: Date.now(),
+      country,
+      city,
     });
     res.status(200).json({ ok: true });
   } catch (e) {
-    console.error('App-Start-Zähler fehlgeschlagen:', e);
+    console.error('App-Start-Log fehlgeschlagen:', e);
     res.status(500).json({ error: 'Failed to record app start' });
   }
 }
