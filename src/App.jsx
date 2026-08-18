@@ -30,6 +30,10 @@ const apiUrl = '/api/gemini';
 // des Demo-Kontingents, ohne es zu verbrauchen — für die Anzeige beim
 // App-Start, bevor die erste echte Anfrage läuft.
 const demoStatusUrl = '/api/demo-status';
+// DSGVO-schonender App-Start-Zähler (api/app-start.js): erhöht serverseitig
+// nur ein Tages-Aggregat pro grober Region (Land/Stadt aus Vercel-Geo-
+// Headern), kein Log einzelner Starts mit Zeitstempel/Standort pro Person.
+const appStartUrl = '/api/app-start';
 // Sprachausgabe (TTS) läuft über einen eigenen Serverless-Proxy (api/tts.js)
 // zur Google Cloud Text-to-Speech API — gleicher Grund wie bei apiUrl: der
 // API-Key darf nie im Browser sichtbar sein.
@@ -173,7 +177,7 @@ setTimeout(() => ctx.close(), 700);
 const MAX_RETRY_DELAY_MS = 8000;
 const fetchWithRetry = async (url, options, maxRetries = 5) => {
 let requestOptions = options;
-if ((url === apiUrl || url === demoStatusUrl || url === apiTtsUrl) && appCheckInstance) {
+if ((url === apiUrl || url === demoStatusUrl || url === apiTtsUrl || url === appStartUrl) && appCheckInstance) {
 try {
 const { token } = await getAppCheckToken(appCheckInstance);
 requestOptions = { ...options, headers: { ...options.headers, 'X-Firebase-AppCheck': token } };
@@ -785,6 +789,10 @@ fetchWithRetry(demoStatusUrl, { method: 'GET' }, 1)
 if (data && typeof data.remaining === 'number') setDemoRemaining(data.remaining);
 })
 .catch(() => {});
+// Zählt diesen App-Start für den Admin-Bereich (api/app-start.js) — rein
+// informativ, Fehler/fehlendes App Check bleiben bewusst stumm und
+// beeinflussen den eigentlichen App-Start nicht.
+fetchWithRetry(appStartUrl, { method: 'POST' }, 1).catch(() => {});
 // Merkt sich, ob die aktuelle onAuthStateChanged-Auflösung die erste seit
 // diesem Seiten-Ladevorgang ist. Nur dann kann eine anonyme Sitzung bereits
 // vor dem Laden im Browser persistiert (und damit potenziell von einer

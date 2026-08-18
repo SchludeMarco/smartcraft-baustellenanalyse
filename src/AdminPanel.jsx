@@ -1,6 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Lock, Bug, Mail, X, Loader2, ChevronDown, ChevronUp, RefreshCw, CheckCircle2, RotateCcw } from 'lucide-react';
-import { fetchAllErrorReports, fetchResolvedContexts, setContextResolved, getErrorContextInfo } from './errorReporting';
+import { Lock, Bug, Mail, X, Loader2, ChevronDown, ChevronUp, RefreshCw, CheckCircle2, RotateCcw, MapPin } from 'lucide-react';
+import {
+  fetchAllErrorReports,
+  fetchResolvedContexts,
+  setContextResolved,
+  getErrorContextInfo,
+  fetchAppStartsDaily,
+} from './errorReporting';
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
@@ -46,6 +52,7 @@ const buildMailto = (report) => {
 const AdminPanel = ({ db, appId, isAdmin, onClose }) => {
   const [reports, setReports] = useState([]);
   const [resolvedContexts, setResolvedContexts] = useState({});
+  const [appStarts, setAppStarts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
@@ -61,12 +68,14 @@ const AdminPanel = ({ db, appId, isAdmin, onClose }) => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const [data, resolved] = await Promise.all([
+      const [data, resolved, starts] = await Promise.all([
         fetchAllErrorReports(db),
         fetchResolvedContexts(db, appId),
+        fetchAppStartsDaily(db, appId),
       ]);
       setReports(data);
       setResolvedContexts(resolved);
+      setAppStarts(starts);
     } catch (e) {
       console.error('Fehler beim Laden der Fehlerreports:', e);
       setLoadError('Fehler beim Laden: ' + e.message);
@@ -127,6 +136,31 @@ const AdminPanel = ({ db, appId, isAdmin, onClose }) => {
                 Aktualisieren
               </button>
             </div>
+            {appStarts.length > 0 && (
+              <div className="mb-3 flex-shrink-0 border border-gray-200 rounded-lg p-2 bg-gray-50 max-h-28 overflow-y-auto">
+                <p className="text-xs font-semibold text-gray-600 mb-1 flex items-center">
+                  <MapPin className="w-3 h-3 mr-1" /> App-Starts (letzte {appStarts.length} Tage, grobe Region)
+                </p>
+                <ul className="space-y-0.5">
+                  {appStarts.map((entry) => {
+                    const topLocations = Object.entries(entry.byLocation || {})
+                      .sort((a, b) => b[1] - a[1])
+                      .slice(0, 3)
+                      .map(([loc, count]) => `${loc.replace('_', ' ')}: ${count}`)
+                      .join(', ');
+                    return (
+                      <li key={entry.date} className="text-[11px] text-gray-600 flex justify-between gap-2">
+                        <span>{entry.date}</span>
+                        <span className="text-right">
+                          {entry.total}
+                          {topLocations ? ` (${topLocations})` : ''}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
             <label className="flex items-center mb-3 flex-shrink-0 text-xs text-gray-600 select-none">
               <input
                 type="checkbox"

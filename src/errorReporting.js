@@ -167,6 +167,20 @@ export const setContextResolved = async (db, appId, context, resolved, meta = {}
   return current;
 };
 
+/**
+ * Liest die Tages-Aggregate der App-Start-Zähler (siehe api/app-start.js) für
+ * den Admin-Bereich - Tagesgranularität pro grober Region statt eines Logs
+ * pro einzelnem Start, damit kein Personenbezug einzelner Aufrufe entsteht.
+ */
+export const fetchAppStartsDaily = async (db, appId, days = 14) => {
+  const col = collection(db, 'artifacts', appId, 'appStartsDaily');
+  const snapshot = await getDocs(col);
+  const entries = [];
+  snapshot.forEach((docSnap) => entries.push(docSnap.data()));
+  entries.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  return entries.slice(0, days);
+};
+
 // Re-export für bestehende Importe (z.B. src/AdminPanel.jsx) — Inhalt liegt in
 // errorContextInfo.js, siehe Kommentar dort.
 export { ERROR_CONTEXT_INFO, getErrorContextInfo };

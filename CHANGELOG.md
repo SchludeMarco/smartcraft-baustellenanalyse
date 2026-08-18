@@ -8,6 +8,24 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.29.0] – 2026-08-18
+
+### Hinzugefügt
+- **DSGVO-schonender App-Start-Zähler für den Admin-Bereich.** Neuer
+  Endpoint `api/app-start.js` erhöht bei jedem App-Start serverseitig nur
+  ein Tages-Aggregat (`artifacts/{appId}/appStartsDaily/{datum}`) mit
+  Gesamtzahl + grober Region (Land/Stadt aus Vercels `x-vercel-ip-*`-Headern,
+  ohne IP-Speicherung) — bewusst kein Log einzelner Starts mit Zeitstempel
+  pro Person, um keinen unnötigen Personenbezug zu schaffen. Gleiches
+  Same-Origin-/App-Check-/Rate-Limiting-Muster wie `api/report-bug.js`.
+  `src/AdminPanel.jsx` zeigt die letzten 14 Tage kompakt an. Neue
+  `firestore.rules`-Regel erlaubt Lesezugriff auf `appStartsDaily` nur für
+  Admin-Konten (Custom Claim `admin: true`), Schreiben erfolgt ausschließlich
+  serverseitig über den Firebase-Admin-SDK. **Hinweis:** Der Zähler ersetzt
+  keine Datenschutzerklärung — bevor die App produktiv mit echten Nutzern
+  läuft, muss dieses (und ähnliche) Datenverarbeitungen dort dokumentiert
+  werden; aktuell existiert im Projekt noch keine.
+
 ## [1.28.0] – 2026-08-16
 
 ### Geändert

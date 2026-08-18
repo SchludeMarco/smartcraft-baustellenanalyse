@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.28.0)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.29.0)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -245,6 +245,14 @@ Environment Variables in den Vercel-Projekteinstellungen:
 
 ## Bekannte Einschränkungen & Ausblick
 
+- **App-Start-Zähler im Admin-Bereich (`api/app-start.js`) nutzt Vercels
+  `x-vercel-ip-country`/`x-vercel-ip-city`-Header** für eine grobe
+  Standortauflösung (Land/Stadt, keine IP-Speicherung). Diese Header liefert
+  nur Vercels Edge-Netzwerk — lokal (`vite dev`/`preview`) fehlen sie, dann
+  läuft der Zähler unter der Region "Unbekannt" weiter. Bewusst als
+  Tages-Aggregat pro Region statt Log pro einzelnem Start umgesetzt, damit
+  kein Personenbezug einzelner Aufrufe entsteht (siehe Kommentar in
+  `api/app-start.js`).
 - **App Check + Rate-Limiting/Demo-Kontingent für `/api/gemini` sind optional**
   (ohne `FIREBASE_SERVICE_ACCOUNT_KEY`/`VITE_RECAPTCHA_SITE_KEY` läuft
   `api/gemini.js` im dokumentierten Fail-open-Modus: Origin-Check bleibt
