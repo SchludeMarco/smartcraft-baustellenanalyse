@@ -1,14 +1,24 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAppCheck } from 'firebase-admin/app-check';
+import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { APP_ID } from '../shared/appId.js';
 
 // Protokolliert App-Starts für den Admin-Bereich: ein Eintrag pro Start mit
 // Zeitstempel + grober Region (Land/Stadt aus Vercels Geo-Headern) - die IP
-// selbst wird nirgends gespeichert, es gibt keinen Bezug zu einer
-// Nutzeridentität (kein Login/UID nötig, siehe Same-Origin-/App-Check-Schutz
-// unten statt einer Firebase-Auth-Prüfung). Bewusst gröber als GPS: Vercels
-// Header lösen nur bis Stadt-Ebene auf.
+// selbst wird nirgends gespeichert. Bewusst gröber als GPS: Vercels Header
+// lösen nur bis Stadt-Ebene auf.
+//
+// Optional wird zusätzlich die anonyme Firebase-UID des Aufrufers mitgeloggt
+// (aus dem Authorization-Bearer-Token, verifiziert statt vom Client
+// übernommen) - dieselbe UID, die src/App.jsx ohnehin für die
+// Verlaufs-Funktion anlegt, keine neue Kennung. Damit lassen sich
+// wiederkehrende Geräte an derselben UID erkennen, ohne Name/E-Mail - solange
+// sich die Person nicht per Google anmeldet. Fehlt/ist ungültig das Token,
+// wird trotzdem geloggt, nur ohne visitorId (rein informatives Feature, darf
+// den App-Start nicht blockieren). Eigene Admin-Aufrufe werden zusätzlich zur
+// clientseitigen Sperre (siehe App.jsx logAppStartOnce) hier serverseitig
+// nochmal ausgeschlossen.
 
 // Gleiches Lazy-Init/Fail-open-Muster wie api/gemini.js: ohne Service-Account
 // bleiben App Check/Firestore aus, statt den App-Start selbst zu blockieren.
@@ -37,6 +47,20 @@ async function verifyAppCheck(req, app) {
     return true;
   } catch {
     return false;
+  }
+}
+
+// Liefert { uid, isAdmin } bei gültigem Token, sonst null - nie ein Grund,
+// den Request abzulehnen (siehe Kommentar oben).
+async function verifyVisitor(req, app) {
+  const authHeader = req.headers['authorization'] || '';
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!idToken) return null;
+  try {
+    const decoded = await getAuth(app).verifyIdToken(idToken);
+    return { uid: decoded.uid, isAdmin: decoded.admin === true };
+  } catch {
+    return null;
   }
 }
 
@@ -138,13 +162,20 @@ export default async function handler(req, res) {
     sanitizeLocationPart(req.headers['x-vercel-ip-city']) ||
     sanitizeLocationPart(req.headers['x-vercel-ip-country-region']) ||
     'Unbekannt';
+
+  const visitor = await verifyVisitor(req, app);
+  if (visitor?.isAdmin) {
+    // Serverseitige Absicherung zusätzlich zur clientseitigen Sperre in
+    // App.jsx - Admin-Aufrufe sollen die Statistik nie verfälschen.
+    res.status(200).json({ ok: true, skipped: 'admin' });
+    return;
+  }
+
   const db = getFirestore(app);
   try {
-    await db.collection('artifacts').doc(APP_ID).collection('appStarts').add({
-      timestamp: Date.now(),
-      country,
-      city,
-    });
+    const entry = { timestamp: Date.now(), country, city };
+    if (visitor?.uid) entry.visitorId = visitor.uid;
+    await db.collection('artifacts').doc(APP_ID).collection('appStarts').add(entry);
     res.status(200).json({ ok: true });
   } catch (e) {
     console.error('App-Start-Log fehlgeschlagen:', e);

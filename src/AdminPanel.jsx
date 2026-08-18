@@ -147,7 +147,14 @@ const AdminPanel = ({ db, appId, isAdmin, onClose }) => {
                     return (
                       <li key={entry.id} className="text-[11px] text-gray-600 flex justify-between gap-2">
                         <span>{formatTimestamp(entry.timestamp)}</span>
-                        <span className="text-right">{location}</span>
+                        <span className="text-right">
+                          {location}
+                          {entry.visitorId && (
+                            <span className="text-gray-400" title={entry.visitorId}>
+                              {' '}· {entry.visitorId.slice(0, 6)}
+                            </span>
+                          )}
+                        </span>
                       </li>
                     );
                   })}

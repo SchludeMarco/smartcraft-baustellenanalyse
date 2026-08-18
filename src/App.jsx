@@ -193,14 +193,15 @@ console.error('App-Check-Token konnte nicht geholt werden:', e);
 queueErrorReport('app-check-token', e);
 }
 }
-if (url === apiUrl && currentAuthInstance?.currentUser) {
+if ((url === apiUrl || url === appStartUrl) && currentAuthInstance?.currentUser) {
 try {
 const idToken = await getIdToken(currentAuthInstance.currentUser);
 requestOptions = { ...requestOptions, headers: { ...requestOptions.headers, Authorization: `Bearer ${idToken}` } };
 } catch {
-// ID-Token ist optional: ohne Admin-Claim ändert ein fehlendes Token
-// nichts am normalen Demo-Kontingent-Verhalten, also darf es die
-// Anfrage nicht blockieren.
+// ID-Token ist optional: bei apiUrl ändert ein fehlendes Token nichts am
+// normalen Demo-Kontingent-Verhalten (nur der Admin-Claim bleibt
+// unerkannt); bei appStartUrl wird der Start dann ohne UID geloggt (siehe
+// api/app-start.js) — beides darf die jeweilige Anfrage nicht blockieren.
 }
 }
 for (let i = 0; i < maxRetries; i++) {
@@ -789,10 +790,18 @@ fetchWithRetry(demoStatusUrl, { method: 'GET' }, 1)
 if (data && typeof data.remaining === 'number') setDemoRemaining(data.remaining);
 })
 .catch(() => {});
-// Zählt diesen App-Start für den Admin-Bereich (api/app-start.js) — rein
-// informativ, Fehler/fehlendes App Check bleiben bewusst stumm und
-// beeinflussen den eigentlichen App-Start nicht.
-fetchWithRetry(appStartUrl, { method: 'POST' }, 1).catch(() => {});
+// Zählt diesen App-Start für den Admin-Bereich (api/app-start.js) — genau
+// einmal pro Seiten-Ladevorgang, erst sobald der Auth-Status bekannt ist:
+// eigene Aufrufe des Admin-Kontos (auch automatisch wiederhergestellte
+// Google-Sitzungen) sollen die Statistik nicht verfälschen. Rein informativ,
+// Fehler/fehlendes App Check bleiben bewusst stumm.
+let appStartLogged = false;
+const logAppStartOnce = (isAdminUser) => {
+  if (appStartLogged) return;
+  appStartLogged = true;
+  if (isAdminUser) return;
+  fetchWithRetry(appStartUrl, { method: 'POST' }, 1).catch(() => {});
+};
 // Merkt sich, ob die aktuelle onAuthStateChanged-Auflösung die erste seit
 // diesem Seiten-Ladevorgang ist. Nur dann kann eine anonyme Sitzung bereits
 // vor dem Laden im Browser persistiert (und damit potenziell von einer
@@ -810,6 +819,7 @@ if (user.isAnonymous && wasFirstResolution) {
 // erst bestätigen lassen statt sie stillschweigend zu übernehmen.
 setPendingResumeUser(user);
 setIsAuthReady(true);
+logAppStartOnce(false);
 return;
 }
 setUserId(user.uid);
@@ -819,13 +829,26 @@ setPendingResumeUser(null);
 // Custom Claims stecken im ID-Token, nicht im User-Objekt selbst — erst
 // getIdTokenResult() legt sie offen. Rein informativ für die UI (den
 // eigentlichen Zugriffsschutz für Daten setzt firestore.rules durch),
-// daher bleibt ein Fehler hier stumm und isAdmin einfach false.
-getIdTokenResult(user).then((r) => setIsAdmin(r.claims?.admin === true)).catch(() => setIsAdmin(false));
+// daher bleibt ein Fehler hier stumm und isAdmin einfach false. Gleichzeitig
+// entscheidet das Ergebnis, ob dieser Start mitgezählt wird (siehe
+// logAppStartOnce oben) — eigene Admin-Aufrufe sollen die Statistik nicht
+// verfälschen.
+getIdTokenResult(user)
+.then((r) => {
+const isAdminUser = r.claims?.admin === true;
+setIsAdmin(isAdminUser);
+logAppStartOnce(isAdminUser);
+})
+.catch(() => {
+setIsAdmin(false);
+logAppStartOnce(false);
+});
 } else {
 setUserId(null);
 setAuthUser(null);
 setIsAdmin(false);
 setShowAuth(false);
+logAppStartOnce(false);
 if (wasFirstResolution) {
 try {
 await signInAnonymously(authInstance);

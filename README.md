@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.29.1)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.30.0)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -247,14 +247,21 @@ Environment Variables in den Vercel-Projekteinstellungen:
 
 - **App-Start-Log im Admin-Bereich (`api/app-start.js`) nutzt Vercels
   `x-vercel-ip-country`/`x-vercel-ip-city`-Header** für eine grobe
-  Standortauflösung (Land/Stadt, keine IP-Speicherung, kein Login/UID nötig).
-  Diese Header liefert nur Vercels Edge-Netzwerk — lokal (`vite dev`/
-  `preview`) fehlen sie, dann läuft der Eintrag unter der Region "Unbekannt".
-  Ein Eintrag pro Start (`artifacts/{appId}/appStarts`, Firestore ohne
-  eingebaute Aufbewahrungsfrist) wächst unbegrenzt — bei nennenswertem
-  Nutzeraufkommen sollte dafür eine Firestore-TTL-Policy auf das
+  Standortauflösung (Land/Stadt, keine IP-Speicherung). Diese Header liefert
+  nur Vercels Edge-Netzwerk — lokal (`vite dev`/`preview`) fehlen sie, dann
+  läuft der Eintrag unter der Region "Unbekannt". Eigene Aufrufe des
+  Admin-Kontos werden client- und serverseitig ausgeschlossen. Optional wird
+  die anonyme Firebase-UID des Aufrufers als `visitorId` mitgeloggt (dieselbe
+  UID, die ohnehin für die Verlaufs-Funktion existiert) — damit lassen sich
+  wiederkehrende Geräte erkennen, solange die Person nicht per Google
+  angemeldet ist. Ein Eintrag pro Start (`artifacts/{appId}/appStarts`,
+  Firestore ohne eingebaute Aufbewahrungsfrist) wächst unbegrenzt — bei
+  nennenswertem Nutzeraufkommen sollte dafür eine Firestore-TTL-Policy auf das
   `timestamp`-Feld eingerichtet werden (Firebase Console/`gcloud`, kein
-  App-Code), um alte Einträge automatisch zu löschen.
+  App-Code), um alte Einträge automatisch zu löschen. **Achtung:** Sobald
+  echte Nutzer die App verwenden, muss diese Datenverarbeitung (Zeitstempel +
+  grobe Region + pseudonyme Geräte-ID) in einer Datenschutzerklärung stehen —
+  aktuell existiert im Projekt noch keine.
 - **App Check + Rate-Limiting/Demo-Kontingent für `/api/gemini` sind optional**
   (ohne `FIREBASE_SERVICE_ACCOUNT_KEY`/`VITE_RECAPTCHA_SITE_KEY` läuft
   `api/gemini.js` im dokumentierten Fail-open-Modus: Origin-Check bleibt

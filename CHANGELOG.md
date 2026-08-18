@@ -8,6 +8,22 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.30.0] – 2026-08-18
+
+### Hinzugefügt
+- **App-Start-Log: eigene Admin-Aufrufe ausgeschlossen, pseudonyme
+  Geräte-Wiedererkennung ergänzt.** `src/App.jsx` verschiebt den
+  App-Start-Ping in den `onAuthStateChanged`-Callback und zählt nur noch, wenn
+  der (ggf. automatisch wiederhergestellte) Nutzer keinen Admin-Claim trägt
+  (`logAppStartOnce`) — vorher wurden auch eigene Test-/Admin-Aufrufe
+  mitgezählt. `api/app-start.js` verifiziert dazu optional ein
+  Firebase-ID-Token (`Authorization: Bearer …`) und lehnt Admin-Aufrufe
+  zusätzlich serverseitig ab (Defense-in-Depth). Aus demselben Token wird bei
+  Erfolg die anonyme Firebase-UID als `visitorId` mitgeloggt — dieselbe UID,
+  die für die Verlaufs-Funktion ohnehin existiert, keine neue Kennung —, damit
+  wiederkehrende Geräte am selben Ort unterscheidbar sind, ohne Name/E-Mail.
+  `firestore.rules`-Kommentar und README entsprechend ergänzt.
+
 ## [1.29.1] – 2026-08-18
 
 ### Geändert
