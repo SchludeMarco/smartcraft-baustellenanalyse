@@ -8,6 +8,18 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.34.2] – 2026-08-19
+
+### Geändert
+- **App-Start-Log zählt jetzt auch eigene Admin-Aufrufe.** Die in V1.30.0
+  eingeführte Ausnahme (Admin-Konto wurde weder client- noch serverseitig
+  geloggt) fiel bei einem echten Admin-Testbesuch auf: Statt eines geloggten
+  Starts mit ID fehlte der Eintrag komplett, was wie der in V1.34.1 gefixte
+  visitorId-Bug aussah. Client (`logAppStartOnce` in `src/App.jsx`) und
+  Server (`api/app-start.js`, `verifyVisitor`/`isAdmin`-Skip) prüfen jetzt
+  nicht mehr, ob der Aufrufer Admin ist — jeder App-Start wird geloggt, auch
+  vom eigenen Admin-Konto.
+
 ## [1.34.1] – 2026-08-19
 
 ### Behoben

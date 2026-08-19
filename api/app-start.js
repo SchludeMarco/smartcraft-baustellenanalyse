@@ -16,9 +16,7 @@ import { APP_ID } from '../shared/appId.js';
 // wiederkehrende Geräte an derselben UID erkennen, ohne Name/E-Mail - solange
 // sich die Person nicht per Google anmeldet. Fehlt/ist ungültig das Token,
 // wird trotzdem geloggt, nur ohne visitorId (rein informatives Feature, darf
-// den App-Start nicht blockieren). Eigene Admin-Aufrufe werden zusätzlich zur
-// clientseitigen Sperre (siehe App.jsx logAppStartOnce) hier serverseitig
-// nochmal ausgeschlossen.
+// den App-Start nicht blockieren).
 
 // Gleiches Lazy-Init/Fail-open-Muster wie api/gemini.js: ohne Service-Account
 // bleiben App Check/Firestore aus, statt den App-Start selbst zu blockieren.
@@ -50,15 +48,15 @@ async function verifyAppCheck(req, app) {
   }
 }
 
-// Liefert { uid, isAdmin } bei gültigem Token, sonst null - nie ein Grund,
-// den Request abzulehnen (siehe Kommentar oben).
-async function verifyVisitor(req, app) {
+// Liefert die verifizierte UID bei gültigem Token, sonst null - nie ein
+// Grund, den Request abzulehnen (siehe Kommentar oben).
+async function verifyVisitorUid(req, app) {
   const authHeader = req.headers['authorization'] || '';
   const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
   if (!idToken) return null;
   try {
     const decoded = await getAuth(app).verifyIdToken(idToken);
-    return { uid: decoded.uid, isAdmin: decoded.admin === true };
+    return decoded.uid;
   } catch {
     return null;
   }
@@ -163,18 +161,12 @@ export default async function handler(req, res) {
     sanitizeLocationPart(req.headers['x-vercel-ip-country-region']) ||
     'Unbekannt';
 
-  const visitor = await verifyVisitor(req, app);
-  if (visitor?.isAdmin) {
-    // Serverseitige Absicherung zusätzlich zur clientseitigen Sperre in
-    // App.jsx - Admin-Aufrufe sollen die Statistik nie verfälschen.
-    res.status(200).json({ ok: true, skipped: 'admin' });
-    return;
-  }
+  const visitorId = await verifyVisitorUid(req, app);
 
   const db = getFirestore(app);
   try {
     const entry = { timestamp: Date.now(), country, city };
-    if (visitor?.uid) entry.visitorId = visitor.uid;
+    if (visitorId) entry.visitorId = visitorId;
     await db.collection('artifacts').doc(APP_ID).collection('appStarts').add(entry);
     res.status(200).json({ ok: true });
   } catch (e) {

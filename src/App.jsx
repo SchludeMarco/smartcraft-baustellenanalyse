@@ -795,15 +795,12 @@ if (data && typeof data.remaining === 'number') setDemoRemaining(data.remaining)
 })
 .catch(() => {});
 // Zählt diesen App-Start für den Admin-Bereich (api/app-start.js) — genau
-// einmal pro Seiten-Ladevorgang, erst sobald der Auth-Status bekannt ist:
-// eigene Aufrufe des Admin-Kontos (auch automatisch wiederhergestellte
-// Google-Sitzungen) sollen die Statistik nicht verfälschen. Rein informativ,
-// Fehler/fehlendes App Check bleiben bewusst stumm.
+// einmal pro Seiten-Ladevorgang, erst sobald der Auth-Status bekannt ist.
+// Rein informativ, Fehler/fehlendes App Check bleiben bewusst stumm.
 let appStartLogged = false;
-const logAppStartOnce = (isAdminUser) => {
+const logAppStartOnce = () => {
   if (appStartLogged) return;
   appStartLogged = true;
-  if (isAdminUser) return;
   fetchWithRetry(appStartUrl, { method: 'POST' }, 1).catch(() => {});
 };
 // Merkt sich, ob die aktuelle onAuthStateChanged-Auflösung die erste seit
@@ -823,7 +820,7 @@ if (user.isAnonymous && wasFirstResolution) {
 // erst bestätigen lassen statt sie stillschweigend zu übernehmen.
 setPendingResumeUser(user);
 setIsAuthReady(true);
-logAppStartOnce(false);
+logAppStartOnce();
 return;
 }
 setUserId(user.uid);
@@ -833,19 +830,15 @@ setPendingResumeUser(null);
 // Custom Claims stecken im ID-Token, nicht im User-Objekt selbst — erst
 // getIdTokenResult() legt sie offen. Rein informativ für die UI (den
 // eigentlichen Zugriffsschutz für Daten setzt firestore.rules durch),
-// daher bleibt ein Fehler hier stumm und isAdmin einfach false. Gleichzeitig
-// entscheidet das Ergebnis, ob dieser Start mitgezählt wird (siehe
-// logAppStartOnce oben) — eigene Admin-Aufrufe sollen die Statistik nicht
-// verfälschen.
+// daher bleibt ein Fehler hier stumm und isAdmin einfach false.
 getIdTokenResult(user)
 .then((r) => {
-const isAdminUser = r.claims?.admin === true;
-setIsAdmin(isAdminUser);
-logAppStartOnce(isAdminUser);
+setIsAdmin(r.claims?.admin === true);
+logAppStartOnce();
 })
 .catch(() => {
 setIsAdmin(false);
-logAppStartOnce(false);
+logAppStartOnce();
 });
 } else {
 setUserId(null);
@@ -867,10 +860,10 @@ queueErrorReport('firebase-auth', e);
 setError("Kritischer Fehler: Die App konnte keine anonyme Sitzung starten. Historie nicht möglich.");
 // Anmeldung gescheitert - es kommt kein weiterer onAuthStateChanged-
 // Durchlauf, der den Start sonst loggen würde. Trotzdem zählen, nur ohne UID.
-logAppStartOnce(false);
+logAppStartOnce();
 }
 } else {
-logAppStartOnce(false);
+logAppStartOnce();
 }
 }
 setIsAuthReady(true);
