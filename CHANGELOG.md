@@ -8,6 +8,17 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.34.0] – 2026-08-19
+
+### Hinzugefügt
+- **Eigene ID im Profil-Modal sichtbar.** Beim Klick auf das Profilbild im
+  Header sieht man jetzt die eigene Kurz-ID (erste 6 Zeichen der Firebase-
+  Anmelde-UID, gleiches Format wie im Admin-App-Start-Log), sowohl im
+  angemeldeten Google-Zweig (`src/App.jsx`, neu unter Name/E-Mail) als auch
+  im anonymen Zweig, wo die bisherige volle "Temporäre ID" nun zusätzlich um
+  die Kurzform ergänzt ist. Funktioniert unabhängig vom Anmeldestatus, da
+  `userId` in beiden Fällen die gleiche Firebase-UID ist.
+
 ## [1.33.1] – 2026-08-18
 
 ### Geändert

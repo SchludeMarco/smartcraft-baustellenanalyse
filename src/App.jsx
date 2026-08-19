@@ -1956,6 +1956,9 @@ onClick={e => e.stopPropagation()}
 <div className="min-w-0">
 <p className="text-sm font-semibold text-gray-800 truncate">{authUser.displayName || 'Google-Konto'}</p>
 <p className="text-xs text-gray-500 truncate">{authUser.email}</p>
+{userId && (
+<p className="text-[11px] text-gray-400 truncate" title={userId}>ID: {userId.slice(0, 6)}</p>
+)}
 </div>
 </div>
 ) : (
@@ -1983,7 +1986,7 @@ Mit Google anmelden
 )}
 <p className="text-sm text-gray-600 mb-4 break-words">
 <strong className="block text-xs uppercase text-gray-500 mb-1">Temporäre ID:</strong>
-<span className="font-semibold text-blue-600 break-words">{userId || 'Wird geladen...'}</span>
+<span className="font-semibold text-blue-600 break-words" title={userId}>{userId ? `${userId.slice(0, 6)} (${userId})` : 'Wird geladen...'}</span>
 </p>
 </>
 )}
