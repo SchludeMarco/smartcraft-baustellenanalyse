@@ -852,15 +852,25 @@ setUserId(null);
 setAuthUser(null);
 setIsAdmin(false);
 setShowAuth(false);
-logAppStartOnce(false);
 if (wasFirstResolution) {
+// Log-Aufruf bewusst NICHT hier, sondern erst nach erfolgreichem
+// signInAnonymously(): an dieser Stelle existiert noch kein currentUser,
+// fetchWithRetry könnte also kein ID-Token anhängen und der Eintrag
+// würde ohne visitorId geloggt (siehe api/app-start.js). Der direkt im
+// Anschluss ausgelöste onAuthStateChanged-Durchlauf mit dem neuen
+// anonymen User übernimmt das Logging dann korrekt mit UID.
 try {
 await signInAnonymously(authInstance);
 } catch (e) {
 console.error("Fehler bei der initialen anonymen Anmeldung:", e);
 queueErrorReport('firebase-auth', e);
 setError("Kritischer Fehler: Die App konnte keine anonyme Sitzung starten. Historie nicht möglich.");
+// Anmeldung gescheitert - es kommt kein weiterer onAuthStateChanged-
+// Durchlauf, der den Start sonst loggen würde. Trotzdem zählen, nur ohne UID.
+logAppStartOnce(false);
 }
+} else {
+logAppStartOnce(false);
 }
 }
 setIsAuthReady(true);

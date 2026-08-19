@@ -8,6 +8,21 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.34.1] – 2026-08-19
+
+### Behoben
+- **App-Start-Log ohne ID bei brandneuer anonymer Sitzung.** Bei einem
+  Browser ganz ohne vorherige Firebase-Sitzung feuerte `logAppStartOnce()`
+  (`src/App.jsx`) den App-Start-Log-Aufruf sofort, bevor
+  `signInAnonymously()` überhaupt einen `currentUser` angelegt hatte —
+  `fetchWithRetry` konnte deshalb kein ID-Token anhängen und `api/app-start.js`
+  loggte den Eintrag ohne `visitorId`. Da der Log-Aufruf nur einmal pro
+  Seiten-Ladevorgang feuert, wurde der Start danach nie mit der neu erzeugten
+  UID nachgetragen. Aufruf jetzt so verschoben, dass er in diesem Fall erst im
+  Folge-Durchlauf von `onAuthStateChanged` mit dem frisch angelegten anonymen
+  User (und damit gültigem Token) passiert; scheitert `signInAnonymously()`
+  selbst, wird der Start als Fallback weiterhin ohne UID gezählt.
+
 ## [1.34.0] – 2026-08-19
 
 ### Hinzugefügt
