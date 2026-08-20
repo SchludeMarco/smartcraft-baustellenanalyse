@@ -32,10 +32,10 @@ body {
       0 10px 20px -12px rgba(43, 23, 10, 0.5);
   }
 
-  /* Kopfleiste im Spiel-Look: dunkles Weinrot mit Gold-Saum. */
+  /* Kopfleiste im Spiel-Look: dunkles Weinrot, Gold-Saum kommt als
+     ausgefranste Kante vom HeaderPlate-SVG-Overlay (siehe App.jsx). */
   .header-ornate {
     background: linear-gradient(180deg, #7c3434 0%, var(--color-wood) 55%, var(--color-wood-dark) 100%);
-    border-bottom: 3px solid var(--color-gold);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
   }
 

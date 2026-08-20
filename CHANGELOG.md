@@ -8,6 +8,17 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.35.0] – 2026-08-20
+
+### Hinzugefügt
+- **Baustellen-"used"-Look für die Kopfleiste.** Der Header hat jetzt statt
+  einer geraden Goldlinie einen ausgefransten/kaputten Goldrand sowie
+  Rost-, Ölflecken, Kratzer und einen dezenten Glanzstreifen als
+  SVG-Overlay (`HeaderPlate` in `src/App.jsx`). Das Overlay legt sich rein
+  dekorativ über den bestehenden `.header-ornate`-Hintergrund
+  (`src/index.css`), sodass an keiner Stelle Transparenz durchscheint,
+  unabhängig von Bildschirmbreite/-höhe.
+
 ## [1.34.2] – 2026-08-19
 
 ### Geändert

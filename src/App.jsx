@@ -393,6 +393,103 @@ className="appearance-none block relative w-10 h-10 p-0 m-0 leading-none rounded
 <Zap className="absolute w-5 h-5 bottom-0 right-0 transform translate-x-1 translate-y-1 text-yellow-300 fill-yellow-300 shadow-md" />
 </button>
 );
+// Baustellen-"used"-Look fuer die Kopfleiste: Rost-/Oelflecken, Kratzer,
+// Glanzstreifen und ein ausgefranster Goldrand statt der geraden Linie.
+// Liegt als reines Deko-Overlay (absolute inset-0, keine eigene Fuellung)
+// UEBER dem bestehenden .header-ornate-Hintergrund, damit an keiner Stelle
+// Transparenz durchscheint, egal wie breit/hoch der Header gerade ist.
+const HeaderPlate = () => (
+<svg
+className="absolute inset-0 w-full h-full pointer-events-none"
+viewBox="0 0 1000 100"
+preserveAspectRatio="none"
+aria-hidden="true"
+>
+<defs>
+<filter id="headerGrunge" x="-20%" y="-20%" width="140%" height="140%">
+<feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="11" result="t" />
+<feColorMatrix in="t" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.33 0.33 0.33 0 0" />
+</filter>
+<filter id="headerGrime" x="-20%" y="-20%" width="140%" height="140%">
+<feTurbulence type="fractalNoise" baseFrequency="0.015 0.06" numOctaves="3" seed="4" result="t2" />
+<feColorMatrix in="t2" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.6 0.6 0.6 0 0" />
+</filter>
+<radialGradient id="headerRust1">
+<stop offset="0%" stopColor="#a85a1a" stopOpacity="0.85" />
+<stop offset="55%" stopColor="#7a3a12" stopOpacity="0.5" />
+<stop offset="100%" stopColor="#7a3a12" stopOpacity="0" />
+</radialGradient>
+<radialGradient id="headerRust2">
+<stop offset="0%" stopColor="#c46a1e" stopOpacity="0.9" />
+<stop offset="60%" stopColor="#8a4412" stopOpacity="0.45" />
+<stop offset="100%" stopColor="#8a4412" stopOpacity="0" />
+</radialGradient>
+<radialGradient id="headerOil">
+<stop offset="0%" stopColor="#05100a" stopOpacity="0.75" />
+<stop offset="60%" stopColor="#0a1a12" stopOpacity="0.45" />
+<stop offset="100%" stopColor="#0a1a12" stopOpacity="0" />
+</radialGradient>
+<radialGradient id="headerOilSheen">
+<stop offset="0%" stopColor="#bcd4ff" stopOpacity="0.22" />
+<stop offset="45%" stopColor="#bcd4ff" stopOpacity="0.06" />
+<stop offset="100%" stopColor="#bcd4ff" stopOpacity="0" />
+</radialGradient>
+<linearGradient id="headerGloss" x1="0%" y1="0%" x2="100%" y2="100%">
+<stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
+<stop offset="40%" stopColor="#ffffff" stopOpacity="0" />
+<stop offset="47%" stopColor="#ffffff" stopOpacity="0.18" />
+<stop offset="51%" stopColor="#ffffff" stopOpacity="0.05" />
+<stop offset="55%" stopColor="#ffffff" stopOpacity="0" />
+<stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+</linearGradient>
+<linearGradient id="headerGoldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" stopColor="#e6c65c" />
+<stop offset="100%" stopColor="#c9a227" />
+</linearGradient>
+</defs>
+
+{/* feiner Rausch-Schmutz + groessere Schmutzwolken */}
+<rect width="1000" height="100" fill="#000000" filter="url(#headerGrunge)" style={{ mixBlendMode: 'multiply', opacity: 0.14 }} />
+<rect width="1000" height="100" fill="#2a1206" filter="url(#headerGrime)" style={{ mixBlendMode: 'multiply', opacity: 0.22 }} />
+
+{/* Rostflecken */}
+<g style={{ mixBlendMode: 'multiply' }}>
+<ellipse cx="55" cy="78" rx="50" ry="20" fill="url(#headerRust1)" />
+<ellipse cx="935" cy="60" rx="46" ry="20" fill="url(#headerRust2)" />
+<ellipse cx="480" cy="82" rx="65" ry="15" fill="url(#headerRust1)" />
+</g>
+
+{/* Oelflecken mit leichtem Schimmer */}
+<g style={{ mixBlendMode: 'multiply' }}>
+<ellipse cx="320" cy="35" rx="40" ry="16" fill="url(#headerOil)" />
+<ellipse cx="760" cy="28" rx="30" ry="13" fill="url(#headerOil)" />
+</g>
+<g style={{ mixBlendMode: 'screen' }}>
+<ellipse cx="317" cy="32" rx="14" ry="6" fill="url(#headerOilSheen)" />
+</g>
+
+{/* Kratzer */}
+<g style={{ mixBlendMode: 'overlay', opacity: 0.5 }} strokeLinecap="round">
+<line x1="110" y1="15" x2="250" y2="6" stroke="#ffffff" strokeWidth="2" />
+<line x1="560" y1="25" x2="700" y2="10" stroke="#ffffff" strokeWidth="1.5" />
+<line x1="800" y1="14" x2="900" y2="32" stroke="#000000" strokeWidth="1.5" />
+<line x1="380" y1="12" x2="420" y2="38" stroke="#000000" strokeWidth="1.2" />
+</g>
+
+{/* diagonaler Glanzstreifen */}
+<rect width="1000" height="100" fill="url(#headerGloss)" style={{ mixBlendMode: 'overlay' }} />
+
+{/* ausgefranster Goldrand statt gerader Linie, sitzt an der Unterkante */}
+<polyline
+points="1000,93 940,100 880,88 820,99 760,90 700,100 640,91 580,86 520,97 460,89 400,99 340,90 280,86 220,98 160,90 100,100 40,92 0,93"
+fill="none"
+stroke="url(#headerGoldGrad)"
+strokeWidth="6"
+strokeLinejoin="round"
+strokeLinecap="round"
+/>
+</svg>
+);
 // Extrahiert die für die Profil-UI relevanten Felder aus einem Firebase-User.
 // Zwei Gründe, warum das nicht einfach `user` selbst sein kann:
 // 1. Nach linkWithPopup() (anonym -> Google) bleiben displayName/email/photoURL
@@ -2130,6 +2227,7 @@ isAnonymous: authUser?.isAnonymous ?? true,
 )}
 {/* Header mit Profil-Button - Farbe folgt dem gewählten Beruf (weicher Übergang) */}
 <header className="w-full p-5 header-ornate relative transition-colors duration-700 ease-in-out">
+<HeaderPlate />
 <div className="flex items-center justify-between relative z-10">
 <div className="flex items-center space-x-3">
 {/* EINGEBETTETES, STABILES LOGO (Lucide-Icons) */}
