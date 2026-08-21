@@ -8,6 +8,16 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.36.0] – 2026-08-21
+
+### Hinzugefügt
+- **Browser-Tab-Icon (Favicon).** Die App hatte bisher gar kein Favicon,
+  Browser-Tabs zeigten nur das Standard-Icon. Neu ist `public/favicon.svg`
+  (in `index.html` per `<link rel="icon" type="image/svg+xml">`
+  eingebunden) — ein rundes Badge im Header-Look (Weinrot-Verlauf, Gold-Ring)
+  mit dem gleichen Hammer+Blitz-Motiv wie das Logo in der Kopfleiste
+  (`SmarterCraftLogo` in `src/App.jsx`).
+
 ## [1.35.0] – 2026-08-20
 
 ### Hinzugefügt
