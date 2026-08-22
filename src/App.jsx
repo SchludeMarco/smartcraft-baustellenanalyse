@@ -106,9 +106,9 @@ const TRADE_ICONS = [
 { name: "Allround-Handwerker", icon: Settings },
 { name: "Sonstig...", icon: MoreHorizontal },
 ];
-// Gewerbe-spezifische KI-Tools (zusätzlich zu den generischen "Zusätzliche
+// Berufs-spezifische KI-Tools (zusätzlich zu den generischen "Zusätzliche
 // KI-Tools"). Werden im Ergebnis-Bereich in einem eigenen Reiter angezeigt,
-// der signalisiert, dass sie speziell für das gewählte Gewerk sind. Bei
+// der signalisiert, dass sie speziell für den gewählten Beruf sind. Bei
 // "Allround-Handwerker" wird die Vereinigung aller Listen gezeigt (siehe
 // currentTradeTools in der App-Komponente).
 const TRADE_TOOLS = {
@@ -705,12 +705,12 @@ const [isGeneratingMaterials, setIsGeneratingMaterials] = useState(false);
 const [isGeneratingSafety, setIsGeneratingSafety] = useState(false);
 const [isGeneratingVideos, setIsGeneratingVideos] = useState(false);
 const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-// Gewerbe-spezifische KI-Tools (TRADE_TOOLS): Ergebnisse/Ladezustand pro
-// Tool-ID statt einzelner States, da die Anzahl der Tools pro Gewerk variiert.
+// Berufs-spezifische KI-Tools (TRADE_TOOLS): Ergebnisse/Ladezustand pro
+// Tool-ID statt einzelner States, da die Anzahl der Tools pro Beruf variiert.
 const [tradeToolResults, setTradeToolResults] = useState({});
 const [loadingTradeToolIds, setLoadingTradeToolIds] = useState({});
 const [activeToolsTab, setActiveToolsTab] = useState('general');
-// Bei "Allround-Handwerker" werden alle Gewerbe-Tools zusammen angezeigt.
+// Bei "Allround-Handwerker" werden alle Berufs-Tools zusammen angezeigt.
 const currentTradeTools = useMemo(
 () => selectedTrade === 'Allround-Handwerker'
 ? Object.values(TRADE_TOOLS).flat()
@@ -1537,7 +1537,7 @@ setError("Der Kundenbericht konnte nicht erstellt werden. Bitte in ein paar Minu
 setIsGeneratingReport(false);
 }
 }, [solutionText, db, userId]);
-// --- FUNKTION: Gewerbe-spezifisches KI-Tool aufrufen (TRADE_TOOLS, Text Mode) ---
+// --- FUNKTION: Berufs-spezifisches KI-Tool aufrufen (TRADE_TOOLS, Text Mode) ---
 // Generisch statt eine eigene Funktion pro Tool, da systemInstruction/Query
 // je Tool (TRADE_TOOLS) variieren, Fetch/Fehlerbehandlung aber identisch sind.
 const callGeminiTradeToolAPI = useCallback(async (tool) => {
@@ -1750,7 +1750,7 @@ const tradeToolEntries = currentTradeTools
 .filter((entry) => entry.text);
 if (tradeToolEntries.length > 0) {
 tradeToolsHtml = `
-<h2>7. Gewerbe-Spezial: ${selectedTrade}</h2>
+<h2>7. Berufs-Spezial: ${selectedTrade}</h2>
 ${tradeToolEntries.map(({ tool, text }) => `
 <div class="result-box" style="margin-bottom: 15px;">
 <strong>${tool.label}</strong>
@@ -1949,7 +1949,7 @@ Stimme: {isGoogleUser ? 'Premium (Google Cloud TTS, WaveNet)' : 'Browser-Spracha
 {isGoogleUser && ' — bei ausgeschöpftem Kontingent automatischer Wechsel zur Browser-Stimme'}
 </p>
 </div>
-{/* 2. Zusätzliche KI-Tools: "Allgemein" (generisch) und "Gewerbe-Spezial" (TRADE_TOOLS) als Reiter */}
+{/* 2. Zusätzliche KI-Tools: "Allgemein" (generisch) und "Berufs-Spezial" (TRADE_TOOLS) als Reiter */}
 <div className="border-t pt-4 border-gray-100">
 <h3 className="text-lg font-semibold text-gray-700 mb-3">Zusätzliche KI-Tools:</h3>
 <div className="flex items-center gap-2 mb-3">
@@ -1974,7 +1974,7 @@ activeToolsTab === 'trade' ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-
 style={activeToolsTab === 'trade' ? { backgroundColor: theme.accent } : undefined}
 >
 <Sparkles className="w-3.5 h-3.5" />
-{selectedTrade === 'Allround-Handwerker' ? 'Alle Gewerbe-Spezial' : `${selectedTrade}-Spezial`}
+{selectedTrade === 'Allround-Handwerker' ? 'Alle Berufs-Spezial' : `${selectedTrade}-Spezial`}
 </button>
 )}
 </div>
@@ -2145,7 +2145,7 @@ Kundenbericht & Nächste Schritte
 </div>
 </div>
 )}
-{/* 6b. Gewerbe-Spezial Tool-Ergebnisse */}
+{/* 6b. Berufs-Spezial Tool-Ergebnisse */}
 {currentTradeTools.map((tool) => {
 const toolResult = tradeToolResults[tool.id];
 if (!toolResult) return null;

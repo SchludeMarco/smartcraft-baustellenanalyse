@@ -116,7 +116,7 @@ const LegalPanel = ({ onClose }) => {
 
           <Section title="4. Analyse-Historie (Cloud Firestore)">
             <p>
-              Durchgeführte Analysen (gewähltes Gewerk, Problembeschreibung,
+              Durchgeführte Analysen (gewählter Beruf, Problembeschreibung,
               KI-Antwort, Zeitpunkt) werden in der Datenbank Cloud Firestore
               (Google) ausschließlich unter der eigenen, dem Gerät/Konto
               zugeordneten Kennung gespeichert und sind technisch nur für
@@ -130,7 +130,7 @@ const LegalPanel = ({ onClose }) => {
 
           <Section title="5. KI-gestützte Problemanalyse (Google Gemini API)">
             <p>
-              Die eingegebene Problembeschreibung, das ausgewählte Gewerk sowie
+              Die eingegebene Problembeschreibung, der ausgewählte Beruf sowie
               ein optional hochgeladenes oder mit der Kamera aufgenommenes Foto
               der Problemstelle werden zur Erzeugung der Analyse an die Google
               Gemini API übermittelt und dort verarbeitet (Google Ireland

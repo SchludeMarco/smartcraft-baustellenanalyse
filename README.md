@@ -1,4 +1,4 @@
-# Sm@rtCraft – Der Kollege in der Hosentasche (V1.37.0)
+# Sm@rtCraft – Der Kollege in der Hosentasche (V1.37.1)
 
 **Ein Werkzeug, das ich mir selbst gewünscht hätte.**
 
@@ -142,16 +142,16 @@ genug, dass auch Laien ihr zuhause folgen können.
 - **Video-Anleitungs-Suche** — passende YouTube-Tutorials zur Lösung, per
   Google-Search-Grounding gefunden
 
-**4b. Gewerbe-spezifische KI-Tools** — zusätzlich zu den vier generischen
-Werkzeugen gibt es pro Gewerk zwei weitere KI-Tools, die in einem eigenen
-Reiter ("<Gewerk>-Spezial") neben "Allgemein" erscheinen, z.B. beim Klempner
+**4b. Berufs-spezifische KI-Tools** — zusätzlich zu den vier generischen
+Werkzeugen gibt es pro Beruf zwei weitere KI-Tools, die in einem eigenen
+Reiter ("<Beruf>-Spezial") neben "Allgemein" erscheinen, z.B. beim Klempner
 ein Trinkwasserverordnung-Check und ein Normteile-Finder, beim Elektriker ein
 VDE-Vorschriften-Check und ein Sicherungs-/Querschnitt-Rechner (volle Liste
 in `TRADE_TOOLS`, `src/App.jsx`). Bei "Allround-Handwerker" zeigt der Reiter
-die Vereinigung aller Gewerbe-Tools.
+die Vereinigung aller Berufs-Tools.
 
 **5. PDF-Export** — der komplette Bericht (Diagnose, Materialliste, Sicherheits-Check,
-Video-Anleitungen, Kundenbericht, Gewerbe-Spezial-Tool-Ergebnisse, Foto) lässt sich als
+Video-Anleitungen, Kundenbericht, Berufs-Spezial-Tool-Ergebnisse, Foto) lässt sich als
 druckfertiges PDF exportieren —
 direkt weitergebbar an Kunden, an den Handwerker des Vertrauens oder fürs eigene
 Archiv.
