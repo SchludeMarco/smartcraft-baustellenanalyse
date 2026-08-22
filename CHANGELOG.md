@@ -8,6 +8,23 @@ Bis einschließlich V1.7.1 wurde die Version noch nicht bei jedem Commit
 konsequent gepflegt — die ersten drei Einträge unten gehören alle zu
 demselben Versionsstand.
 
+## [1.37.0] – 2026-08-22
+
+### Hinzugefügt
+- **Gewerbe-spezifische KI-Tools.** Neben den vier generischen "Zusätzliche
+  KI-Tools" (Materialliste, Sicherheits-Check, Video-Anleitung,
+  Kundenbericht) gibt es jetzt pro Gewerk zwei zusätzliche KI-Tools, die im
+  Ergebnisbereich in einem eigenen Reiter ("<Gewerk>-Spezial", markiert mit
+  einem Sparkle-Icon) neben "Allgemein" erscheinen — z.B. beim Klempner ein
+  Trinkwasserverordnung-Check und ein Normteile-Finder, beim Elektriker ein
+  VDE-Vorschriften-Check und ein Sicherungs-/Querschnitt-Rechner (volle
+  Liste in `TRADE_TOOLS`, `src/App.jsx`). Bei "Allround-Handwerker" zeigt der
+  Reiter die Vereinigung aller Gewerbe-Tools (16 insgesamt). Eine einzige
+  generische `callGeminiTradeToolAPI`-Funktion ruft alle Tools auf statt
+  einer eigenen Funktion pro Tool, um die bestehende Fetch-/
+  Fehlerbehandlung nicht 16-fach zu duplizieren. Ergebnisse fließen auch in
+  den PDF-Export (`handleExportPdf`) ein.
+
 ## [1.36.0] – 2026-08-21
 
 ### Hinzugefügt

@@ -3,7 +3,8 @@ import {
 Camera, Image, Upload, Wrench, Loader2, Zap, AlertTriangle, CheckCircle,
 Smartphone, FileText, Pipette, Paintbrush, Flower, Hammer, BrickWall, Home,
 Settings, MoreHorizontal, User, Package, Shield, Video, RefreshCw,
-Volume2, VolumeX, List, X, Lock, Info, MessageSquarePlus
+Volume2, VolumeX, List, X, Lock, Info, MessageSquarePlus,
+Sparkles, Droplets, Search, Calculator, CloudRain, Bug, Scissors, TreePine, Ruler, Layers, HardHat
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import {
@@ -105,6 +106,141 @@ const TRADE_ICONS = [
 { name: "Allround-Handwerker", icon: Settings },
 { name: "Sonstig...", icon: MoreHorizontal },
 ];
+// Gewerbe-spezifische KI-Tools (zusätzlich zu den generischen "Zusätzliche
+// KI-Tools"). Werden im Ergebnis-Bereich in einem eigenen Reiter angezeigt,
+// der signalisiert, dass sie speziell für das gewählte Gewerk sind. Bei
+// "Allround-Handwerker" wird die Vereinigung aller Listen gezeigt (siehe
+// currentTradeTools in der App-Komponente).
+const TRADE_TOOLS = {
+"Klempner": [
+{
+id: "klempner-trinkwv",
+label: "Trinkwasserverordnung-Check",
+icon: Droplets,
+systemInstruction: "Du bist ein Experte für die deutsche Trinkwasserverordnung (TrinkwV) und die einschlägigen DIN-Normen der Sanitärinstallation. Prüfe den folgenden Lösungsvorschlag auf Konformität, nenne die relevanten Normen/Vorschriften und mögliche Stolperfallen. Antworte im Markdown-Format.",
+buildQuery: (solutionText) => `Prüfe diese Lösung auf Normkonformität (Trinkwasserverordnung/DIN): ${solutionText}`,
+},
+{
+id: "klempner-normteile",
+label: "Normteile-Finder",
+icon: Search,
+systemInstruction: "Du bist ein erfahrener SHK-Großhändler. Liste die benötigten genormten Verbindungs- und Dichtungsteile (z.B. Übergangsstücke, Dichtringe, Verschraubungen) für die folgende Lösung mit kurzer Begründung auf. Antworte im Markdown-Format.",
+buildQuery: (solutionText) => `Welche Normteile werden für diese Lösung benötigt? ${solutionText}`,
+},
+],
+"Elektriker": [
+{
+id: "elektriker-vde",
+label: "VDE-Vorschriften-Check",
+icon: Zap,
+systemInstruction: "Du bist ein Elektromeister und Prüfsachverständiger für die einschlägigen VDE-Normen (z.B. VDE 0100). Prüfe den folgenden Lösungsvorschlag auf Normkonformität und nenne relevante Vorschriften sowie Prüfpflichten. Antworte im Markdown-Format.",
+buildQuery: (solutionText) => `Prüfe diese Lösung auf VDE-Konformität: ${solutionText}`,
+},
+{
+id: "elektriker-querschnitt",
+label: "Sicherungs-/Querschnitt-Rechner",
+icon: Calculator,
+systemInstruction: "Du bist ein Elektroplaner. Empfehle für die folgende Lösung passende Leitungsquerschnitte und Sicherungsauslegung (Absicherung, Kabeltyp) inklusive kurzer Begründung. Antworte im Markdown-Format.",
+buildQuery: (solutionText) => `Empfehle Leitungsquerschnitt und Absicherung für diese Lösung: ${solutionText}`,
+},
+],
+"Maler": [
+{
+id: "maler-mengenrechner",
+label: "Farbmengen-Rechner",
+icon: Calculator,
+systemInstruction: "Du bist ein Malermeister mit Erfahrung in der Materialkalkulation. Schätze anhand der folgenden Lösung den ungefähren Farb-/Materialbedarf (Liter pro m², Gebindegrößen) und nenne die getroffenen Annahmen. Antworte im Markdown-Format.",
+buildQuery: (solutionText) => `Schätze den Farbmengenbedarf für diese Lösung: ${solutionText}`,
+},
+{
+id: "maler-trocknung",
+label: "Trocknungszeiten & Wetterfenster",
+icon: CloudRain,
+systemInstruction: "Du bist ein Malermeister. Nenne für die folgende Lösung typische Trocknungs-/Zwischentrocknungszeiten sowie ideale Witterungsbedingungen (Temperatur, Luftfeuchtigkeit) für die Ausführung. Antworte im Markdown-Format.",
+buildQuery: (solutionText) => `Nenne Trocknungszeiten und ideale Witterungsbedingungen für diese Lösung: ${solutionText}`,
+},
+],
+"Gärtner": [
+{
+id: "gaertner-bestimmung",
+label: "Pflanzen- & Schädlingscheck",
+icon: Bug,
+systemInstruction: "Du bist ein Gärtnermeister mit Schwerpunkt Pflanzenschutz. Identifiziere anhand der folgenden Beschreibung mögliche Pflanzenarten, Schädlinge oder Krankheitsbilder und schlage Gegenmaßnahmen vor. Antworte im Markdown-Format.",
+buildQuery: (solutionText) => `Identifiziere Pflanze/Schädling und schlage Gegenmaßnahmen vor: ${solutionText}`,
+},
+{
+id: "gaertner-pflegekalender",
+label: "Pflege- & Schnittkalender",
+icon: Scissors,
+systemInstruction: "Du bist ein Gärtnermeister. Erstelle für die folgende Lösung einen kurzen saisonalen Pflege- und Schnittkalender mit den wichtigsten Zeitfenstern. Antworte im Markdown-Format.",
+buildQuery: (solutionText) => `Erstelle einen Pflege-/Schnittkalender passend zu dieser Lösung: ${solutionText}`,
+},
+],
+"Zimmerer": [
+{
+id: "zimmerer-holzart",
+label: "Holzart-Empfehlung",
+icon: TreePine,
+systemInstruction: "Du bist ein Zimmerermeister. Empfehle für die folgende Lösung eine geeignete Holzart (inkl. Holzschutzklasse falls relevant) mit kurzer Begründung. Antworte im Markdown-Format.",
+buildQuery: (solutionText) => `Empfehle eine passende Holzart für diese Lösung: ${solutionText}`,
+},
+{
+id: "zimmerer-holzmenge",
+label: "Holzmengen-Schätzung",
+icon: Ruler,
+systemInstruction: "Du bist ein Zimmerermeister mit Erfahrung in der Materialkalkulation. Schätze grob den Holzmengenbedarf (lfm/m³) für die folgende Lösung inklusive der getroffenen Annahmen. Antworte im Markdown-Format.",
+buildQuery: (solutionText) => `Schätze den Holzmengenbedarf für diese Lösung: ${solutionText}`,
+},
+],
+"Mechaniker": [
+{
+id: "mechaniker-fehlercode",
+label: "Fehlercode-/Symptom-Lookup",
+icon: Search,
+systemInstruction: "Du bist ein Kfz-Meister mit Diagnoseerfahrung. Ordne der folgenden Lösung typische Fehlercodes bzw. Symptome zu und erkläre mögliche Ursachenketten. Antworte im Markdown-Format.",
+buildQuery: (solutionText) => `Ordne typische Fehlercodes/Symptome dieser Lösung zu: ${solutionText}`,
+},
+{
+id: "mechaniker-ersatzteil",
+label: "Ersatzteil-Sucher",
+icon: Wrench,
+systemInstruction: "Du bist ein Kfz-Teiledienst-Berater. Liste die für die folgende Lösung typischerweise benötigten Ersatzteile mit kurzer Beschreibung auf. Antworte im Markdown-Format.",
+buildQuery: (solutionText) => `Welche Ersatzteile werden für diese Lösung typischerweise benötigt? ${solutionText}`,
+},
+],
+"Maurer": [
+{
+id: "maurer-mengenrechner",
+label: "Mörtel-/Beton-Mengenrechner",
+icon: Calculator,
+systemInstruction: "Du bist ein Maurermeister mit Erfahrung in der Materialkalkulation. Schätze anhand der folgenden Lösung den ungefähren Mörtel-/Betonbedarf inklusive Mischungsverhältnis. Antworte im Markdown-Format.",
+buildQuery: (solutionText) => `Schätze den Mörtel-/Betonbedarf für diese Lösung: ${solutionText}`,
+},
+{
+id: "maurer-statik",
+label: "Statik-Hinweise",
+icon: Layers,
+systemInstruction: "Du bist ein Maurermeister. Weise bei der folgenden Lösung auf mögliche statisch relevante Aspekte hin und nenne, wann ein Statiker hinzugezogen werden sollte. Antworte im Markdown-Format.",
+buildQuery: (solutionText) => `Nenne statisch relevante Hinweise zu dieser Lösung: ${solutionText}`,
+},
+],
+"Dachdecker": [
+{
+id: "dachdecker-material",
+label: "Dachneigung-/Material-Eignung",
+icon: HardHat,
+systemInstruction: "Du bist ein Dachdeckermeister. Beurteile anhand der folgenden Lösung, welche Dacheindeckungsmaterialien geeignet sind und ab welcher Dachneigung sie zulässig sind. Antworte im Markdown-Format.",
+buildQuery: (solutionText) => `Beurteile geeignete Dachmaterialien und Neigungsgrenzen für diese Lösung: ${solutionText}`,
+},
+{
+id: "dachdecker-wetterfenster",
+label: "Wetterfenster-Empfehlung",
+icon: CloudRain,
+systemInstruction: "Du bist ein Dachdeckermeister. Nenne für die folgende Lösung ideale Witterungsbedingungen und Zeitfenster für die Ausführung sowie Risiken bei ungünstigem Wetter. Antworte im Markdown-Format.",
+buildQuery: (solutionText) => `Nenne ein geeignetes Wetterfenster für diese Lösung: ${solutionText}`,
+},
+],
+};
 /**
 * Funktion zur Konvertierung einer Datei in Base64 (wird für die API benötigt).
 * Skaliert dabei über Canvas auf max. 1600px Kantenlänge herunter und
@@ -569,6 +705,18 @@ const [isGeneratingMaterials, setIsGeneratingMaterials] = useState(false);
 const [isGeneratingSafety, setIsGeneratingSafety] = useState(false);
 const [isGeneratingVideos, setIsGeneratingVideos] = useState(false);
 const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+// Gewerbe-spezifische KI-Tools (TRADE_TOOLS): Ergebnisse/Ladezustand pro
+// Tool-ID statt einzelner States, da die Anzahl der Tools pro Gewerk variiert.
+const [tradeToolResults, setTradeToolResults] = useState({});
+const [loadingTradeToolIds, setLoadingTradeToolIds] = useState({});
+const [activeToolsTab, setActiveToolsTab] = useState('general');
+// Bei "Allround-Handwerker" werden alle Gewerbe-Tools zusammen angezeigt.
+const currentTradeTools = useMemo(
+() => selectedTrade === 'Allround-Handwerker'
+? Object.values(TRADE_TOOLS).flat()
+: (TRADE_TOOLS[selectedTrade] || []),
+[selectedTrade]
+);
 // --- TTS (Sprachausgabe) States ---
 // Läuft über einen serverseitigen Proxy (api/tts.js) zur Google Cloud
 // Text-to-Speech API statt über die Web Speech API des Browsers — die
@@ -1029,6 +1177,9 @@ setIsGeneratingMaterials(false);
 setIsGeneratingSafety(false);
 setIsGeneratingVideos(false);
 setIsGeneratingReport(false);
+setTradeToolResults({});
+setLoadingTradeToolIds({});
+setActiveToolsTab('general');
 // Dateiauswahl zurücksetzen (für saubere erneute Auswahl)
 ['camera-input', 'gallery-input', 'cloud-input'].forEach((id) => {
 const fileInput = document.getElementById(id);
@@ -1144,6 +1295,8 @@ setMaterialList(null);
 setSafetyTips(null);
 setVideoLinks(null);
 setClientReport(null);
+setTradeToolResults({});
+setLoadingTradeToolIds({});
 setSources([]);
 const mimeType = 'image/jpeg';
 const tradeContext = selectedTrade && selectedTrade !== "Sonstiges..."
@@ -1384,6 +1537,56 @@ setError("Der Kundenbericht konnte nicht erstellt werden. Bitte in ein paar Minu
 setIsGeneratingReport(false);
 }
 }, [solutionText, db, userId]);
+// --- FUNKTION: Gewerbe-spezifisches KI-Tool aufrufen (TRADE_TOOLS, Text Mode) ---
+// Generisch statt eine eigene Funktion pro Tool, da systemInstruction/Query
+// je Tool (TRADE_TOOLS) variieren, Fetch/Fehlerbehandlung aber identisch sind.
+const callGeminiTradeToolAPI = useCallback(async (tool) => {
+if (!solutionText) return;
+setLoadingTradeToolIds((prev) => ({ ...prev, [tool.id]: true }));
+setTradeToolResults((prev) => ({ ...prev, [tool.id]: null }));
+const payload = {
+contents: [{ parts: [{ text: tool.buildQuery(solutionText) }] }],
+systemInstruction: { parts: [{ text: tool.systemInstruction }] },
+};
+try {
+const response = await fetchWithRetry(apiUrl, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(payload)
+});
+updateDemoRemainingFromResponse(response);
+const responseText = await response.text();
+if (!response.ok || !responseText) {
+// Server-Fehler (z.B. Demo-Kontingent, Rate-Limit) kommen als {"error": "..."} —
+// nur die Klartext-Message anzeigen statt des rohen JSON-Strings.
+const errorMsg = extractApiErrorMessage(responseText, responseText || `API-Fehler mit Status: ${response.status}`);
+console.error("API Response Fehler:", errorMsg);
+throw new Error(errorMsg);
+}
+let result;
+try {
+result = JSON.parse(responseText);
+} catch (parseError) {
+console.error("JSON-Parse-Fehler:", parseError, "Antworttext:", responseText);
+throw new Error("Ungültige Antwortstruktur von der KI.");
+}
+const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+if (text) {
+setTradeToolResults((prev) => ({ ...prev, [tool.id]: text }));
+} else {
+queueErrorReport('gemini-trade-tool-api', new Error(`Antwort ohne verwertbaren Kandidaten (${tool.id})`));
+flushErrorReports(db, userId, appId);
+setError(`Konnte "${tool.label}" nicht erstellen.`);
+}
+} catch (e) {
+console.error(`API-Fehler (${tool.label}):`, e);
+queueErrorReport('gemini-trade-tool-api', e);
+flushErrorReports(db, userId, appId);
+setError(`"${tool.label}" konnte nicht erstellt werden. Bitte in ein paar Minuten erneut versuchen.`);
+} finally {
+setLoadingTradeToolIds((prev) => ({ ...prev, [tool.id]: false }));
+}
+}, [solutionText, db, userId]);
 // --- FUNKTION: Video-Anleitungen suchen (Google-Search-Grounding) ---
 // Hinweis: responseSchema/responseMimeType lassen sich bei der Gemini API nicht mit
 // dem "tools"-Grounding kombinieren, daher wird das JSON-Array per Prompt erzwungen
@@ -1541,6 +1744,21 @@ ${reportContent}
 </div>
 `;
 }
+let tradeToolsHtml = '';
+const tradeToolEntries = currentTradeTools
+.map((tool) => ({ tool, text: tradeToolResults[tool.id] }))
+.filter((entry) => entry.text);
+if (tradeToolEntries.length > 0) {
+tradeToolsHtml = `
+<h2>7. Gewerbe-Spezial: ${selectedTrade}</h2>
+${tradeToolEntries.map(({ tool, text }) => `
+<div class="result-box" style="margin-bottom: 15px;">
+<strong>${tool.label}</strong>
+<div>${text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>')}</div>
+</div>
+`).join('')}
+`;
+}
 const printContent = `
 <!DOCTYPE html>
 <html lang="de">
@@ -1586,6 +1804,7 @@ ${materialHtml}
 ${safetyHtml}
 ${videoHtml}
 ${reportHtml}
+${tradeToolsHtml}
 <p class="meta">Bericht generiert von der Sm@rtCraft Handwerker App.</p>
 </body>
 </html>
@@ -1601,7 +1820,7 @@ printWindow.print();
 } else {
 setError("Der Browser hat das Popup-Fenster blockiert. Bitte erlauben Sie Popups.");
 }
-}, [solutionText, problemDescription, selectedImageBase64, selectedTrade, materialList, safetyTips, videoLinks, clientReport]);
+}, [solutionText, problemDescription, selectedImageBase64, selectedTrade, materialList, safetyTips, videoLinks, clientReport, currentTradeTools, tradeToolResults]);
 // Dünne Abstraktion für die Anzeige des Ergebniszustands (Laden, Fehler, Lösung)
 const ResultDisplay = useMemo(() => {
 // NEUE PRÜFUNG: Mindestens ein Element muss vorhanden sein
@@ -1730,9 +1949,59 @@ Stimme: {isGoogleUser ? 'Premium (Google Cloud TTS, WaveNet)' : 'Browser-Spracha
 {isGoogleUser && ' — bei ausgeschöpftem Kontingent automatischer Wechsel zur Browser-Stimme'}
 </p>
 </div>
-{/* 2. Neue LLM-Funktionen (bleiben als 2x2 Grid) */}
+{/* 2. Zusätzliche KI-Tools: "Allgemein" (generisch) und "Gewerbe-Spezial" (TRADE_TOOLS) als Reiter */}
 <div className="border-t pt-4 border-gray-100">
 <h3 className="text-lg font-semibold text-gray-700 mb-3">Zusätzliche KI-Tools:</h3>
+<div className="flex items-center gap-2 mb-3">
+<button
+type="button"
+onClick={() => setActiveToolsTab('general')}
+className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+activeToolsTab === 'general' ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+}`}
+style={activeToolsTab === 'general' ? { backgroundColor: theme.accent } : undefined}
+>
+Allgemein
+</button>
+{currentTradeTools.length > 0 && (
+<button
+type="button"
+onClick={() => setActiveToolsTab('trade')}
+title={`Spezielle KI-Tools für ${selectedTrade}`}
+className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+activeToolsTab === 'trade' ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+}`}
+style={activeToolsTab === 'trade' ? { backgroundColor: theme.accent } : undefined}
+>
+<Sparkles className="w-3.5 h-3.5" />
+{selectedTrade === 'Allround-Handwerker' ? 'Alle Gewerbe-Spezial' : `${selectedTrade}-Spezial`}
+</button>
+)}
+</div>
+{activeToolsTab === 'trade' && currentTradeTools.length > 0 ? (
+<div className="grid grid-cols-2 gap-3">
+{currentTradeTools.map((tool) => {
+const ToolIcon = tool.icon;
+const isToolLoading = !!loadingTradeToolIds[tool.id];
+return (
+<button
+key={tool.id}
+onClick={() => callGeminiTradeToolAPI(tool)}
+disabled={isToolLoading || !solutionText}
+className="flex flex-col items-center justify-center p-2 rounded-xl font-bold text-white shadow-md transition duration-300 text-xs transform active:scale-[0.98] disabled:opacity-60"
+style={{ backgroundColor: isToolLoading ? theme.accentDark : theme.accent }}
+>
+{isToolLoading ? (
+<Loader2 className="w-4 h-4 animate-spin" />
+) : (
+<ToolIcon className="w-4 h-4" />
+)}
+<span className="mt-1">✨ {tool.label}</span>
+</button>
+);
+})}
+</div>
+) : (
 <div className="grid grid-cols-2 gap-3">
 {/* Materialliste Button (1/4) - Farbe: Indigo */}
 <button
@@ -1795,6 +2064,7 @@ isGeneratingReport ? 'bg-blue-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-700'
 <span className="mt-1">✨ Kundenbericht</span>
 </button>
 </div>
+)}
 </div>
 {/* 3. Materialliste Ergebnis */}
 {materialList && (
@@ -1875,6 +2145,23 @@ Kundenbericht & Nächste Schritte
 </div>
 </div>
 )}
+{/* 6b. Gewerbe-Spezial Tool-Ergebnisse */}
+{currentTradeTools.map((tool) => {
+const toolResult = tradeToolResults[tool.id];
+if (!toolResult) return null;
+const ToolResultIcon = tool.icon;
+return (
+<div key={tool.id} className="p-4 bg-white border border-gray-200 rounded-xl shadow-inner">
+<h4 className="text-md font-bold text-gray-800 mb-3 flex items-center">
+<ToolResultIcon className="w-5 h-5 mr-2" style={{ color: theme.accent }} />
+{tool.label}
+</h4>
+<div className="text-sm text-gray-700 leading-relaxed">
+<div dangerouslySetInnerHTML={{ __html: toolResult.replace(/\n/g, '<br/>') }} />
+</div>
+</div>
+);
+})}
 {/* 7. PDF EXPORT BUTTON */}
 <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
 <button
@@ -1910,7 +2197,7 @@ Um die Analyse zu starten, benötigen Sie **eines** der folgenden Elemente:
 <p className="text-xs mt-4 text-gray-500">Wählen Sie zuerst Ihren Beruf (Abschnitt 1) für eine präzisere Diagnose.</p>
 </div>
 );
-}, [isAnalyzing, error, clearError, solutionText, handleExportPdf, materialList, safetyTips, videoLinks, clientReport, isGeneratingMaterials, isGeneratingSafety, isGeneratingVideos, isGeneratingReport, callGeminiMaterialsAPI, callGeminiSafetyAPI, callGeminiVideoSearch, callGeminiClientReportAPI, selectedImageBase64, problemDescription, isTtsPlaying, isTtsLoading, ttsGender, ttsMode, isGeneratingTtsShort, handleToggleTts, theme, demoRemaining]);
+}, [isAnalyzing, error, clearError, solutionText, handleExportPdf, materialList, safetyTips, videoLinks, clientReport, isGeneratingMaterials, isGeneratingSafety, isGeneratingVideos, isGeneratingReport, callGeminiMaterialsAPI, callGeminiSafetyAPI, callGeminiVideoSearch, callGeminiClientReportAPI, selectedImageBase64, problemDescription, isTtsPlaying, isTtsLoading, ttsGender, ttsMode, isGeneratingTtsShort, handleToggleTts, theme, demoRemaining, activeToolsTab, currentTradeTools, tradeToolResults, loadingTradeToolIds, callGeminiTradeToolAPI, selectedTrade]);
 // Profil-Modal-Komponente (angepasst an Rot/Blau)
 const UserProfileModal = () => {
 const [showProfile, setShowProfile] = useState(false);
